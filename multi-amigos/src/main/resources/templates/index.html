@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MultiAmigos - Bem-vindo</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+<body>
+
+<!-- =========================
+     Navbar
+========================= -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+    <div class="container">
+        <a class="navbar-brand fw-bold" href="#">MultiAmigos</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link active" href="#" th:href="@{/auth/login}">Login</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#" th:href="@{/auth/register}">Cadastro</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<!-- =========================
+     Hero Section
+========================= -->
+<section class="hero-section d-flex align-items-center text-center text-white">
+    <div class="container">
+        <h1 class="display-4 fw-bold">Bem-vindo ao MultiAmigos</h1>
+        <p class="lead mb-4">Gerencie usuários, hierarquias e permissões com segurança e facilidade.</p>
+        <a href="#" class="btn btn-lg btn-light me-2" th:href="@{/auth/login}">Login</a>
+        <a href="#" class="btn btn-lg btn-outline-light" th:href="@{/auth/register}">Cadastrar-se</a>
+    </div>
+</section>
+
+<!-- =========================
+     Features Section
+========================= -->
+<section class="features py-5">
+    <div class="container">
+        <div class="row g-4 text-center">
+            <div class="col-md-4">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Segurança</h5>
+                        <p class="card-text">Autenticação JWT e controle de acesso baseado em perfis.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Hierarquia</h5>
+                        <p class="card-text">Visualize toda a árvore de usuários e seus filhos.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Responsivo</h5>
+                        <p class="card-text">Design moderno que funciona perfeitamente em celulares e desktops.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- =========================
+     Footer
+========================= -->
+<footer class="bg-primary text-white text-center py-3 mt-5">
+    &copy; 2026 MultiAmigos. Todos os direitos reservados.
+</footer>
+
+<!-- Bootstrap JS Bundle -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Custom JS -->
+<script th:src="@{/js/main.js}"></script>
+
+</body>
+</html>

@@ -1,0 +1,35 @@
+/* =========================
+   Hero Section
+========================= */
+.hero-section {
+    background: linear-gradient(135deg, #4e73df, #1cc88a);
+    height: 80vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+/* Botões hero */
+.hero-section .btn {
+    padding: 0.8rem 2rem;
+    font-size: 1.1rem;
+    border-radius: 50px;
+    transition: all 0.3s ease;
+}
+
+.hero-section .btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+}
+
+/* Features cards hover */
+.features .card:hover {
+    transform: translateY(-5px);
+    transition: all 0.3s ease;
+}
+
+/* Footer */
+footer {
+    font-size: 0.9rem;
+}
