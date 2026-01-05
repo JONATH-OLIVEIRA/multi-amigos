@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Objects;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -57,11 +58,12 @@ public class Usuario {
 	@JsonIgnore // Para evitar loops infinitos no JSON
 	private List<Mensagem> mensagensCriadas = new ArrayList<>();
 
+	@JsonIgnoreProperties({ "filhos", "mensagensCriadas", "usuarioPai" })
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "usuario_pai_id")
 	private Usuario usuarioPai;
 
-	@JsonIgnore
+	@JsonIgnoreProperties({ "filhos", "mensagensCriadas", "usuarioPai" })
 	@OneToMany(mappedBy = "usuarioPai", fetch = FetchType.LAZY)
 	private List<Usuario> filhos = new ArrayList<>();
 

@@ -7,6 +7,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.multi_amigos.DTO.AtualizarUsuarioDTO;
+import com.multi_amigos.DTO.CadastroPublicoDTO;
 import com.multi_amigos.DTO.CadastroUsuarioDTO;
 import com.multi_amigos.DTO.UsuarioDTO;
 import com.multi_amigos.DTO.UsuarioHierarquiaDTO;
@@ -34,6 +36,7 @@ public class UsuarioServiceImpl implements UsuarioService {
 	// =========================
 	// Cadastrar usuário
 	// =========================
+	// UsuarioServiceImpl.java
 	@Override
 	public UsuarioDTO cadastrarUsuario(CadastroUsuarioDTO dto) {
 
@@ -50,23 +53,162 @@ public class UsuarioServiceImpl implements UsuarioService {
 
 		// Define perfil
 		long totalAdmins = usuarioRepository.countByPerfil(Perfil.ADMIN);
+
 		if (totalAdmins == 0) {
+			// Primeiro usuário do sistema será ADMIN
 			usuario.setPerfil(Perfil.ADMIN);
-			usuario.setUsuarioPai(null); // Primeiro admin
+			usuario.setUsuarioPai(null); // Primeiro admin não tem pai
 		} else {
+			// Usuários subsequentes são USUARIO
 			usuario.setPerfil(Perfil.USUARIO);
 
-			if (dto.getUsuarioPaiId() == null) {
-				throw new ValidacaoException("Usuário pai é obrigatório");
-			}
+			// 🔥 NOVA LÓGICA: Verifica se veio por convite/link
+			if (dto.getUsuarioPaiId() != null) {
+				// CADASTRO POR LINK: Usa o usuário que compartilhou o link como pai
+				Usuario usuarioPai = usuarioRepository.findById(dto.getUsuarioPaiId())
+						.orElseThrow(() -> new UsuarioNaoEncontradoException("Usuário referência não encontrado"));
 
-			Usuario usuarioPai = usuarioRepository.findById(dto.getUsuarioPaiId())
-					.orElseThrow(() -> new UsuarioNaoEncontradoException("Usuário pai não encontrado"));
-			usuario.setUsuarioPai(usuarioPai);
+				// Verifica se o usuário pai está ativo
+				if (!usuarioPai.isAtivo()) {
+					throw new ValidacaoException("O usuário referência está inativo");
+				}
+
+				usuario.setUsuarioPai(usuarioPai);
+
+			} else {
+				// CADASTRO DIRETO (SEM LINK): Atribui o ADMIN master como pai padrão
+				List<Usuario> adminsAtivos = usuarioRepository
+						.findByPerfilAndAtivoTrueOrderByDataCriacaoAsc(Perfil.ADMIN);
+
+				if (!adminsAtivos.isEmpty()) {
+					// Pega o primeiro ADMIN criado (master)
+					usuario.setUsuarioPai(adminsAtivos.get(0));
+				} else {
+					// Fallback: pega qualquer usuário ativo
+					List<Usuario> usuariosAtivos = usuarioRepository.findByAtivoTrueOrderByDataCriacaoAsc();
+					if (!usuariosAtivos.isEmpty()) {
+						usuario.setUsuarioPai(usuariosAtivos.get(0));
+					} else {
+						throw new ValidacaoException("Não há usuários ativos no sistema");
+					}
+				}
+			}
 		}
 
+		// Salva o usuário
 		Usuario salvo = usuarioRepository.save(usuario);
 		return UsuarioMapper.toDTO(salvo);
+	}
+
+	@Override
+	public UsuarioDTO cadastroPublico(CadastroPublicoDTO dto) {
+		CadastroUsuarioDTO usuarioDTO = new CadastroUsuarioDTO();
+		usuarioDTO.setNome(dto.getNome());
+		usuarioDTO.setEmail(dto.getEmail());
+		usuarioDTO.setSenha(dto.getSenha());
+		usuarioDTO.setTelefone(dto.getTelefone());
+		// Não seta usuarioPaiId - será atribuído automaticamente pelo método acima
+
+		return cadastrarUsuario(usuarioDTO);
+	}
+
+	// Método para cadastro por link/referência
+	@Override
+	public UsuarioDTO cadastroPorReferencia(Long referenciaId, CadastroPublicoDTO dto) {
+		// Valida a referência
+		if (!usuarioRepository.existsByIdAndAtivoTrue(referenciaId)) {
+			throw new ValidacaoException("Link de referência inválido ou usuário inativo");
+		}
+
+		CadastroUsuarioDTO usuarioDTO = new CadastroUsuarioDTO();
+		usuarioDTO.setNome(dto.getNome());
+		usuarioDTO.setEmail(dto.getEmail());
+		usuarioDTO.setSenha(dto.getSenha());
+		usuarioDTO.setTelefone(dto.getTelefone());
+		usuarioDTO.setUsuarioPaiId(referenciaId); // 🔥 Define o pai como a referência
+
+		return cadastrarUsuario(usuarioDTO);
+	}
+
+	// =========================
+	// Atualizar usuário
+	// =========================
+	@Override
+	public UsuarioDTO atualizarUsuario(Long id, AtualizarUsuarioDTO dto) {
+		Usuario usuario = usuarioRepository.findById(id)
+				.orElseThrow(() -> new UsuarioNaoEncontradoException("Usuário não encontrado"));
+
+		// Atualiza apenas os campos fornecidos
+		if (dto.getNome() != null && !dto.getNome().trim().isEmpty()) {
+			usuario.setNome(dto.getNome());
+		}
+
+		if (dto.getEmail() != null && !dto.getEmail().trim().isEmpty()) {
+			// Verifica se o email já existe (exceto para o próprio usuário)
+			if (!usuario.getEmail().equals(dto.getEmail()) && usuarioRepository.existsByEmail(dto.getEmail())) {
+				throw new ValidacaoException("Email já cadastrado por outro usuário");
+			}
+			usuario.setEmail(dto.getEmail());
+		}
+
+		if (dto.getTelefone() != null) {
+			usuario.setTelefone(dto.getTelefone());
+		}
+
+		if (dto.getSenha() != null && !dto.getSenha().trim().isEmpty()) {
+			usuario.setSenha(passwordEncoder.encode(dto.getSenha()));
+		}
+
+		// ATENÇÃO: Aqui está a mudança importante!
+		// O DTO tem usuarioPaiId, mas também podemos ter usuarioPai (objeto)
+		// Vamos verificar se o usuário atual tem usuarioPaiId no DTO retornado
+
+		if (dto.getUsuarioPaiId() != null) {
+			if (dto.getUsuarioPaiId().equals(id)) {
+				throw new ValidacaoException("Um usuário não pode ser pai de si mesmo");
+			}
+
+			Usuario novoPai = usuarioRepository.findById(dto.getUsuarioPaiId())
+					.orElseThrow(() -> new UsuarioNaoEncontradoException("Usuário pai não encontrado"));
+
+			// Verifica se não está criando um ciclo (o novo pai não pode ser filho do
+			// usuário atual)
+			if (ehDescendente(novoPai, usuario)) {
+				throw new ValidacaoException("Não é possível definir um descendente como pai");
+			}
+
+			usuario.setUsuarioPai(novoPai);
+		}
+
+		if (dto.getAtivo() != null) {
+			// Se está tentando desativar, verifica se não tem filhos ativos
+			if (!dto.getAtivo() && usuario.isAtivo()) {
+				boolean possuiFilhosAtivos = usuarioRepository.existsByUsuarioPaiIdAndAtivoTrue(id);
+				if (possuiFilhosAtivos) {
+					throw new ValidacaoException("Usuário possui filhos ativos e não pode ser desativado");
+				}
+			}
+			usuario.setAtivo(dto.getAtivo());
+		}
+
+		Usuario atualizado = usuarioRepository.save(usuario);
+		return UsuarioMapper.toDTO(atualizado);
+	}
+
+	// Método auxiliar para verificar se um usuário é descendente de outro
+	private boolean ehDescendente(Usuario possivelDescendente, Usuario ancestral) {
+		if (possivelDescendente == null || ancestral == null) {
+			return false;
+		}
+
+		Usuario atual = possivelDescendente;
+		while (atual.getUsuarioPai() != null) {
+			if (atual.getUsuarioPai().getId().equals(ancestral.getId())) {
+				return true;
+			}
+			atual = atual.getUsuarioPai();
+		}
+		return false;
 	}
 
 	// =========================
@@ -77,6 +219,18 @@ public class UsuarioServiceImpl implements UsuarioService {
 	public UsuarioDTO buscarPorId(Long id) {
 		Usuario usuario = usuarioRepository.findById(id)
 				.orElseThrow(() -> new UsuarioNaoEncontradoException("Usuário não encontrado"));
+
+		// Garante que o pai e filhos sejam carregados para o DTO
+		if (usuario.getUsuarioPai() != null) {
+			// Força o carregamento do pai
+			usuario.getUsuarioPai().getId(); // Apenas toca para carregar
+		}
+
+		if (usuario.getFilhos() != null) {
+			// Força o carregamento dos filhos
+			usuario.getFilhos().size();
+		}
+
 		return UsuarioMapper.toDTO(usuario);
 	}
 
@@ -91,37 +245,108 @@ public class UsuarioServiceImpl implements UsuarioService {
 	}
 
 	// =========================
-	// Desativar usuário
+	// Desativar usuário (método específico)
 	// =========================
 	@Override
 	public void desativarUsuario(Long id) {
 		Usuario usuario = usuarioRepository.findById(id)
 				.orElseThrow(() -> new UsuarioNaoEncontradoException("Usuário não encontrado"));
 
-		boolean possuiFilhos = usuarioRepository.existsByUsuarioPaiId(usuario.getId());
-		if (possuiFilhos) {
-			throw new ValidacaoException("Usuário possui filhos ativos e não pode ser removido");
+		boolean possuiFilhosAtivos = usuarioRepository.existsByUsuarioPaiIdAndAtivoTrue(id);
+		if (possuiFilhosAtivos) {
+			throw new ValidacaoException("Usuário possui filhos ativos e não pode ser desativado");
 		}
 
 		usuario.setAtivo(false);
 		usuarioRepository.save(usuario);
 	}
 
+	// =========================
+	// Reativar usuário
+	// =========================
+	@Override
+	public void reativarUsuario(Long id) {
+		Usuario usuario = usuarioRepository.findById(id)
+				.orElseThrow(() -> new UsuarioNaoEncontradoException("Usuário não encontrado"));
+
+		// Verifica se o pai está ativo (se tiver pai)
+		if (usuario.getUsuarioPai() != null && !usuario.getUsuarioPai().isAtivo()) {
+			throw new ValidacaoException("Não é possível reativar usuário com pai inativo");
+		}
+
+		usuario.setAtivo(true);
+		usuarioRepository.save(usuario);
+	}
+
+	// =========================
+	// Listar todos os usuários
+	// =========================
 	@Override
 	@Transactional(readOnly = true)
 	public List<UsuarioDTO> listarTodos() {
 		return usuarioRepository.findAll().stream().map(UsuarioMapper::toDTO).toList();
 	}
-	
-	public List<UsuarioHierarquiaDTO> listarHierarquia(Long usuarioId) {
-	    Usuario usuario = usuarioRepository.findById(usuarioId)
-	            .orElseThrow(() -> new UsuarioNaoEncontradoException("Usuário não encontrado"));
 
-	    // lista todos os filhos recursivamente
-	    return usuario.getFilhos() == null
-	            ? List.of()
-	            : usuario.getFilhos().stream()
-	                .map(UsuarioHierarquiaMapper::toDTO)
-	                .collect(Collectors.toList());
+	// =========================
+	// Listar usuários ativos
+	// =========================
+	@Override
+	@Transactional(readOnly = true)
+	public List<UsuarioDTO> listarAtivos() {
+		return usuarioRepository.findByAtivoTrue().stream().map(UsuarioMapper::toDTO).toList();
+	}
+
+	// =========================
+	// Listar por perfil
+	// =========================
+	@Override
+	@Transactional(readOnly = true)
+	public List<UsuarioDTO> listarPorPerfil(String perfil) {
+		Perfil perfilEnum;
+		try {
+			perfilEnum = Perfil.valueOf(perfil.toUpperCase());
+		} catch (IllegalArgumentException e) {
+			throw new ValidacaoException("Perfil inválido: " + perfil);
+		}
+
+		return usuarioRepository.findByPerfil(perfilEnum).stream().map(UsuarioMapper::toDTO).toList();
+	}
+
+	// =========================
+	// Listar hierarquia
+	// =========================
+	@Override
+	public List<UsuarioHierarquiaDTO> listarHierarquia(Long usuarioId) {
+		Usuario usuario = usuarioRepository.findById(usuarioId)
+				.orElseThrow(() -> new UsuarioNaoEncontradoException("Usuário não encontrado"));
+
+		// Força carregamento dos filhos
+		if (usuario.getFilhos() != null) {
+			usuario.getFilhos().size();
+		}
+
+		return usuario.getFilhos() == null ? List.of()
+				: usuario.getFilhos().stream().map(UsuarioHierarquiaMapper::toDTO).collect(Collectors.toList());
+	}
+
+	// =========================
+	// Método adicional: Buscar usuário com hierarquia completa
+	// =========================
+	@Transactional(readOnly = true)
+	public UsuarioDTO buscarComHierarquia(Long id) {
+		Usuario usuario = usuarioRepository.findById(id)
+				.orElseThrow(() -> new UsuarioNaoEncontradoException("Usuário não encontrado"));
+
+		// Força carregamento do pai
+		if (usuario.getUsuarioPai() != null) {
+			usuario.getUsuarioPai().getId();
+		}
+
+		// Força carregamento dos filhos
+		if (usuario.getFilhos() != null) {
+			usuario.getFilhos().size();
+		}
+
+		return UsuarioMapper.toDTO(usuario);
 	}
 }

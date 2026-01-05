@@ -1,38 +1,197 @@
 <!DOCTYPE html>
 <html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cadastro - MultiAmigos</title>
-    <link rel="stylesheet" href="/css/login.css">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cadastro - MultiAmigos</title>
+<link rel="stylesheet" href="/css/login.css">
+<link
+	href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+	rel="stylesheet">
+<!-- Bootstrap Icons -->
+<link rel="stylesheet"
+	href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+<style>
+body {
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	min-height: 100vh;
+	display: flex;
+	align-items: center;
+}
+
+.register-card {
+	background: white;
+	border-radius: 15px;
+	box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+	padding: 2rem;
+}
+
+.form-control:focus {
+	border-color: #667eea;
+	box-shadow: 0 0 0 0.25rem rgba(102, 126, 234, 0.25);
+}
+
+.btn-register {
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	color: white;
+	border: none;
+	padding: 12px;
+	font-weight: 600;
+	transition: all 0.3s;
+}
+
+.btn-register:hover {
+	opacity: 0.9;
+	transform: translateY(-2px);
+	box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.login-link {
+	color: #667eea;
+	text-decoration: none;
+	font-weight: 500;
+}
+
+.login-link:hover {
+	text-decoration: underline;
+	color: #764ba2;
+}
+
+.invalid-feedback {
+	font-size: 0.875rem;
+}
+</style>
 </head>
-<body class="bg-light">
+<body>
 
-<div class="container d-flex justify-content-center align-items-center vh-100">
-    <div class="card p-4 shadow-sm" style="width: 100%; max-width: 400px;">
-        <h3 class="text-center mb-4">Cadastro</h3>
-        <form id="registerForm">
-            <div class="mb-3">
-                <label for="nome" class="form-label">Nome</label>
-                <input type="text" class="form-control" id="nome" placeholder="Seu nome completo" required>
-            </div>
-            <div class="mb-3">
-                <label for="email" class="form-label">Email</label>
-                <input type="email" class="form-control" id="email" placeholder="email@exemplo.com" required>
-            </div>
-            <div class="mb-3">
-                <label for="senha" class="form-label">Senha</label>
-                <input type="password" class="form-control" id="senha" placeholder="Digite uma senha" required>
-            </div>
-            <button type="submit" class="btn btn-success w-100">Cadastrar</button>
-        </form>
-        <p class="text-center mt-3">
-            Já tem conta? <a href="/auth/login">Faça login</a>
-        </p>
-    </div>
-</div>
+	<div class="container">
+		<div class="row justify-content-center">
+			<div class="col-md-6">
+				<div class="register-card">
+					<div class="text-center mb-4">
+						<h2 class="fw-bold">Criar Nova Conta</h2>
+						<p class="text-muted">Preencha os dados para se cadastrar</p>
+					</div>
 
-<script src="/js/login.js"></script>
+					<form id="registerForm">
+						<div id="formErrors" class="alert alert-danger d-none">
+							<i class="bi bi-exclamation-triangle"></i> <span
+								id="errorMessage"></span>
+						</div>
+
+						<div class="mb-3">
+							<label for="nome" class="form-label"> <i
+								class="bi bi-person"></i> Nome Completo
+							</label> <input type="text" class="form-control" id="nome"
+								placeholder="Digite seu nome completo" required>
+							<div class="form-text">Seu nome como aparecerá no sistema</div>
+						</div>
+
+						<div class="mb-3">
+							<label for="email" class="form-label"> <i
+								class="bi bi-envelope"></i> Email
+							</label> <input type="email" class="form-control" id="email"
+								placeholder="seu@email.com" required>
+							<div class="form-text">Utilize um email válido</div>
+						</div>
+
+						<!-- CAMPO TELEFONE ADICIONADO AQUI -->
+						<div class="mb-3">
+							<label for="telefone" class="form-label"> <i
+								class="bi bi-telephone"></i> Telefone
+							</label> <input type="tel" class="form-control" id="telefone"
+								placeholder="(11)99999-9999">
+							<!-- 🔥 REMOVA O ESPAÇO AQUI -->
+							<div class="form-text">Formato: (DD)99999-9999 (opcional)</div>
+							<!-- 🔥 REMOVA O ESPAÇO AQUI -->
+						</div>
+
+						<div class="mb-4">
+							<label for="senha" class="form-label"> <i
+								class="bi bi-lock"></i> Senha
+							</label> <input type="password" class="form-control" id="senha"
+								placeholder="Mínimo 6 caracteres" required minlength="6">
+							<div class="form-text">A senha deve ter pelo menos 6 caracteres</div>
+						</div>
+
+						<div class="mb-4">
+							<label for="confirmarSenha" class="form-label"> <i
+								class="bi bi-lock-fill"></i> Confirmar Senha
+							</label> <input type="password" class="form-control" id="confirmarSenha"
+								placeholder="Digite a senha novamente" required>
+						</div>
+
+						<button type="submit" class="btn btn-register w-100 mb-3">
+							<i class="bi bi-person-plus"></i> Criar Conta
+						</button>
+
+						<div class="text-center">
+							<p class="mb-0">
+								Já tem uma conta? <a href="/auth/login" class="login-link">Faça
+									login aqui</a>
+							</p>
+						</div>
+					</form>
+				</div>
+
+				<div class="text-center mt-3">
+					<a href="/" class="text-white"> <i class="bi bi-arrow-left"></i>
+						Voltar para página inicial
+					</a>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- Inclua o register.js -->
+	<script src="/js/register.js"></script>
+
+	<!-- Bootstrap JS -->
+	<script
+		src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+	<script>
+    // Máscara de telefone - VERSÃO OTIMIZADA
+    document.addEventListener('DOMContentLoaded', function() {
+        const telefoneInput = document.getElementById('telefone');
+        
+        if (telefoneInput) {
+            // Formatação automática
+            telefoneInput.addEventListener('input', function(e) {
+                let value = e.target.value.replace(/\D/g, '');
+                let formatted = '';
+                
+                if (value.length > 0) {
+                    formatted = '(' + value.substring(0, 2);
+                    
+                    if (value.length > 2) {
+                        formatted += ')';
+                        if (value.length > 7) {
+                            formatted += value.substring(2, 7) + '-' + value.substring(7, 11);
+                        } else {
+                            formatted += value.substring(2, 7);
+                        }
+                    }
+                }
+                
+                e.target.value = formatted;
+            });
+            
+            // Limpa qualquer formatação incorreta ao enviar
+            const form = document.getElementById('registerForm');
+            if (form) {
+                form.addEventListener('submit', function() {
+                    if (telefoneInput.value) {
+                        // Garante o formato correto: (DD)XXXXX-XXXX
+                        let tel = telefoneInput.value;
+                        tel = tel.replace(/\s/g, ''); // Remove espaços
+                        tel = tel.replace(/(\d{2})(\d{5})(\d{4})/, '($1)$2-$3'); // Formata
+                        telefoneInput.value = tel;
+                    }
+                });
+            }
+        }
+    });
+</script>
 </body>
 </html>

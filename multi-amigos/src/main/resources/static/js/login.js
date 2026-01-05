@@ -1,40 +1,41 @@
-// login.js - SOLUÇÃO FINAL (use este código EXATO)
+// login.js - VERSÃO FINAL CORRIGIDA
 document.addEventListener("DOMContentLoaded", () => {
-    
+
     const loginForm = document.getElementById("loginForm");
     const token = localStorage.getItem("token");
-    
-    // Se já tem token, vai direto para o dashboard
+
+    // Se já tem token e está na página de login
     if (token && window.location.pathname === "/auth/login") {
-        console.log("Já logado, redirecionando para dashboard...");
-        // ENVIA O TOKEN VIA AJAX PRIMEIRO
+        console.log("Usuário já logado, testando token...");
+
+        // Testa se o token ainda é válido
         fetch('/admin/dashboard', {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
+            headers: { 'Authorization': `Bearer ${token}` }
         })
-        .then(response => {
-            if (response.ok) {
-                // Se deu certo, carrega a página
-                return response.text();
-            }
-            throw new Error(`Erro ${response.status}`);
-        })
-        .then(html => {
-            document.open();
-            document.write(html);
-            document.close();
-        })
-        .catch(err => {
-            console.error("Erro:", err);
-            // Se deu erro, mostra opção de logout
-            showLoggedInOptions();
-        });
-    } else if (token) {
-        // Se está em outra página e tem token, mostra opções
-        showLoggedInOptions();
+            .then(response => {
+                if (response.ok) {
+                    // Token válido - Carrega dashboard via AJAX com token
+                    console.log("✅ Token válido, carregando dashboard...");
+                    return response.text();
+                } else {
+                    // Token inválido - remove e mostra opção de login
+                    throw new Error('Token inválido');
+                }
+            })
+            .then(html => {
+                // Substitui o conteúdo da página com o dashboard
+                document.open();
+                document.write(html);
+                document.close();
+                // Atualiza URL no histórico
+                window.history.pushState({}, '', '/admin/dashboard');
+            })
+            .catch(() => {
+                localStorage.removeItem('token');
+                showLoggedInOptions();
+            });
     }
-    
+
     if (loginForm) {
         loginForm.addEventListener("submit", async (e) => {
             e.preventDefault();
@@ -64,26 +65,43 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 const data = await res.json();
                 localStorage.setItem("token", data.token);
+
+                console.log("✅ Login bem-sucedido! Carregando dashboard...");
                 
-                // 🔥 SOLUÇÃO: Carrega o dashboard VIA AJAX com token
+                // 🔥 CORREÇÃO: Carrega dashboard VIA AJAX com token
                 fetch('/admin/dashboard', {
                     headers: {
                         'Authorization': `Bearer ${data.token}`
                     }
                 })
                 .then(response => {
-                    if (response.ok) {
-                        return response.text();
+                    console.log("Dashboard response status:", response.status);
+                    
+                    if (response.status === 403) {
+                        throw new Error('403 - Acesso negado! Verifique se você é ADMIN.');
                     }
-                    throw new Error(`Erro ${response.status}`);
+                    if (response.status === 401) {
+                        throw new Error('401 - Token inválido ou expirado.');
+                    }
+                    if (!response.ok) {
+                        throw new Error(`Erro ${response.status}: ${response.statusText}`);
+                    }
+                    return response.text();
                 })
                 .then(html => {
+                    // Substitui TODO o conteúdo da página atual
                     document.open();
                     document.write(html);
                     document.close();
+                    
+                    // Atualiza a URL no histórico do navegador
+                    window.history.pushState({}, '', '/admin/dashboard');
+                    
+                    console.log("✅ Dashboard carregado com sucesso!");
                 })
                 .catch(err => {
-                    alert("Erro ao carregar dashboard: " + err.message);
+                    console.error("❌ Erro ao carregar dashboard:", err);
+                    alert("Erro: " + err.message);
                     submitBtn.disabled = false;
                     submitBtn.textContent = "Entrar";
                 });
@@ -103,13 +121,8 @@ document.addEventListener("DOMContentLoaded", () => {
             div.id = 'loggedInMsg';
             div.className = 'alert alert-info mt-3';
             div.innerHTML = `
-                <p><strong>Você já está logado!</strong></p>
-                <button onclick="goToDashboard()" class="btn btn-success btn-sm">
-                    Ir para Dashboard
-                </button>
-                <button onclick="logout()" class="btn btn-outline-danger btn-sm ms-2">
-                    Sair
-                </button>
+                <p><strong>Sessão expirada ou inválida</strong></p>
+                <p>Faça login novamente.</p>
             `;
             container.appendChild(div);
         }
@@ -121,31 +134,35 @@ function goToDashboard() {
     const token = localStorage.getItem('token');
     if (!token) {
         alert("Faça login primeiro!");
+        window.location.href = "/auth/login";
         return;
     }
-    
+
     fetch('/admin/dashboard', {
         headers: {
             'Authorization': `Bearer ${token}`
         }
     })
-    .then(response => {
-        if (response.ok) {
-            return response.text();
-        }
-        throw new Error(`Erro ${response.status}`);
-    })
-    .then(html => {
-        document.open();
-        document.write(html);
-        document.close();
-    })
-    .catch(err => {
-        alert("Erro: " + err.message);
-    });
+        .then(response => {
+            if (response.ok) {
+                return response.text();
+            }
+            throw new Error(`Erro ${response.status}`);
+        })
+        .then(html => {
+            document.open();
+            document.write(html);
+            document.close();
+            window.history.pushState({}, '', '/admin/dashboard');
+        })
+        .catch(err => {
+            alert("Erro: " + err.message);
+        });
 }
 
 function logout() {
-    localStorage.removeItem('token');
-    window.location.reload();
+    if (confirm("Deseja realmente sair?")) {
+        localStorage.removeItem('token');
+        window.location.href = "/";
+    }
 }

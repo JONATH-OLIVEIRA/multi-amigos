@@ -1,9 +1,11 @@
 package com.multi_amigos.config;
 
 import java.util.Arrays;
+import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -41,36 +43,52 @@ public class SecurityConfig {
 	@Bean
 	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
-		http
-				// ❌ CSRF desabilitado (JWT)
-				.csrf(csrf -> csrf.disable())
-
-				// 🌍 CORS
+		http.csrf(csrf -> csrf.disable()
+				)
+					
 				.cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
-				// 🔒 JWT = stateless
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-				// 🔐 Regras de acesso
+				.exceptionHandling(
+						exception -> exception.authenticationEntryPoint((request, response, authException) -> {
+							if (request.getRequestURI().startsWith("/api/")) {
+								response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+								response.setContentType("application/json;charset=UTF-8");
+								response.getWriter().write("{\"error\":\"Unauthorized\"}");
+							} else {
+								response.sendRedirect("/auth/login");
+							}
+						}).accessDeniedHandler((request, response, accessDeniedException) -> {
+							if (request.getRequestURI().startsWith("/api/")) {
+								response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+								response.setContentType("application/json;charset=UTF-8");
+								response.getWriter().write("{\"error\":\"Forbidden\"}");
+							} else {
+								response.sendRedirect("/auth/login");
+							}
+						}))
+
 				.authorizeHttpRequests(auth -> auth
 
-						// 🔓 Endpoints públicos
-						.requestMatchers("/", "/auth/login", "/auth/register", "/auth/login-page", "/css/**", "/js/**",
-								"/images/**", "/swagger-ui/**","/auth/validate", 
-				                 "/auth/login-page", "/v3/api-docs/**")
+						// 🔓 públicos
+						.requestMatchers("/", "/home", "/auth/login", "/auth/login-page", "/auth/register", "/css/**",
+								"/js/**", "/images/**")
 						.permitAll()
 
-						// 👑 ADMIN acessando endpoints de admin.
-						.requestMatchers("/admin/dashboard", "/api/usuarios/**").hasRole("ADMIN")
+						// 🔓 swagger
+						.requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
 
-						
-						// 🔒 Qualquer outro endpoint
+						// 🔒 dashboard
+						.requestMatchers("/dashboard/**").authenticated().requestMatchers("/admin/**").hasRole("ADMIN")
+
+						// 🔒 APIs
+						.requestMatchers("/api/**").authenticated()
+
 						.anyRequest().authenticated())
 
-				// 🧩 Filtro JWT
 				.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
 		return http.build();
 	}
-
 }

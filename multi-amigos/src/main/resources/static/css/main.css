@@ -1,35 +1,194 @@
 /* =========================
-   Hero Section
+   GLOBAL
+========================= */
+:root {
+    --primary: #4e73df;
+    --secondary: #6f42c1;
+    --success: #198754;
+    --success-soft: #d1e7dd;
+    --dark: #212529;
+    --muted: #6c757d;
+    --light-bg: #f8f9fc;
+}
+
+body {
+    font-family: "Segoe UI", Roboto, Arial, sans-serif;
+    color: var(--dark);
+    background-color: #ffffff;
+}
+
+/* =========================
+   NAVBAR
+========================= */
+.navbar {
+    background-color: var(--primary) !important;
+}
+
+.navbar-brand,
+.navbar-nav .nav-link {
+    color: #fff !important;
+}
+
+.navbar-nav .nav-link:hover {
+    opacity: 0.85;
+}
+
+/* =========================
+   HERO SECTION
 ========================= */
 .hero-section {
-    background: linear-gradient(135deg, #4e73df, #1cc88a);
-    height: 80vh;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    min-height: 70vh;
+    padding-top: 90px;
     display: flex;
     align-items: center;
-    justify-content: center;
     text-align: center;
 }
 
-/* Botões hero */
+.hero-section h1,
+.hero-section p {
+    color: #ffffff;
+}
+
+/* Botões Hero */
 .hero-section .btn {
-    padding: 0.8rem 2rem;
+    padding: 0.75rem 2rem;
     font-size: 1.1rem;
     border-radius: 50px;
     transition: all 0.3s ease;
 }
 
+.hero-section .btn-light {
+    color: var(--primary);
+    font-weight: 600;
+}
+
+.hero-section .btn-outline-light {
+    border-color: #ffffff;
+    color: #ffffff;
+}
+
 .hero-section .btn:hover {
-    transform: scale(1.05);
-    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
 }
 
-/* Features cards hover */
+/* =========================
+   FEATURES
+========================= */
+.features {
+    background-color: var(--light-bg);
+}
+
+.features .card {
+    border-radius: 16px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
 .features .card:hover {
-    transform: translateY(-5px);
-    transition: all 0.3s ease;
+    transform: translateY(-6px);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
 }
 
-/* Footer */
+.feature-icon i {
+    opacity: 0.9;
+}
+
+/* =========================
+   BADGES
+========================= */
+.badge {
+    font-weight: 500;
+}
+
+.badge.bg-success {
+    background-color: var(--success) !important;
+}
+
+.badge.bg-warning {
+    color: #212529;
+}
+
+/* =========================
+   HOW IT WORKS
+========================= */
+.step-number .badge {
+    font-size: 1.1rem;
+    width: 48px;
+    height: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* =========================
+   BUTTONS
+========================= */
+.btn-primary {
+    background-color: var(--primary);
+    border-color: var(--primary);
+}
+
+.btn-primary:hover {
+    background-color: #3c5ecf;
+}
+
+.btn-success {
+    background-color: var(--success);
+    border-color: var(--success);
+}
+
+.btn-success:hover {
+    background-color: #157347;
+}
+
+.btn-outline-success {
+    color: var(--success);
+    border-color: var(--success);
+}
+
+.btn-outline-success:hover {
+    background-color: var(--success);
+    color: #fff;
+}
+
+/* =========================
+   DROPDOWN
+========================= */
+.dropdown-menu {
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+}
+
+/* =========================
+   FOOTER
+========================= */
 footer {
+    background-color: #1f2937;
+    color: #e5e7eb;
     font-size: 0.9rem;
+}
+
+footer h5 {
+    color: #ffffff;
+}
+
+footer a {
+    color: #e5e7eb;
+}
+
+footer a:hover {
+    color: #ffffff;
+    text-decoration: underline;
+}
+
+footer hr {
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* =========================
+   ALERTS (HOME)
+========================= */
+.alert {
+    border-radius: 12px;
 }

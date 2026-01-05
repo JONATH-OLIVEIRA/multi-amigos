@@ -1,51 +1,107 @@
+/* =========================
+   VARIÁVEIS (MESMO PADRÃO DO SITE)
+========================= */
+:root {
+    --primary: #4e73df;
+    --secondary: #6f42c1;
+    --dark: #212529;
+    --muted: #6c757d;
+    --light: #f8f9fc;
+}
+
+/* =========================
+   BODY
+========================= */
 body {
-    background: linear-gradient(135deg, #0d6efd 0%, #6f42c1 100%);
     min-height: 100vh;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
     display: flex;
-    justify-content: center;
     align-items: center;
+    justify-content: center;
+    font-family: "Segoe UI", Roboto, Arial, sans-serif;
 }
 
-.card {
-    border-radius: 15px;
-    padding: 30px;
-    background: #ffffff;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-    transition: transform 0.3s;
+/* =========================
+   CONTAINER
+========================= */
+.login-container {
+    width: 100%;
+    padding: 20px;
 }
 
-.card:hover {
-    transform: translateY(-5px);
+/* =========================
+   CARD
+========================= */
+.login-card {
+    background-color: #ffffff;
+    border-radius: 18px;
+    padding: 32px;
+    max-width: 420px;
+    margin: auto;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-.card h3 {
+.login-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.2);
+}
+
+.login-card h3 {
+    color: var(--dark);
     font-weight: 600;
-    color: #343a40;
+}
+
+/* =========================
+   FORM
+========================= */
+.form-label {
+    font-weight: 500;
+    color: var(--dark);
 }
 
 .form-control {
-    border-radius: 10px;
-    padding: 10px 15px;
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 0.95rem;
 }
 
-.btn {
-    border-radius: 10px;
-    padding: 10px 15px;
+.form-control:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 0.15rem rgba(78, 115, 223, 0.25);
+}
+
+/* =========================
+   BOTÃO
+========================= */
+.btn-primary {
+    background-color: var(--primary);
+    border-color: var(--primary);
+    border-radius: 12px;
+    padding: 12px;
     font-weight: 500;
-    transition: 0.3s;
+    transition: all 0.3s ease;
 }
 
-.btn:hover {
+.btn-primary:hover {
+    background-color: #3c5ecf;
     transform: translateY(-2px);
 }
 
-/* Links */
-p a {
-    color: #0d6efd;
-    text-decoration: none;
-    font-weight: 500;
+/* =========================
+   LINKS
+========================= */
+.login-card p {
+    color: var(--muted);
+    font-size: 0.95rem;
 }
 
-p a:hover {
+.login-card a {
+    color: var(--primary);
+    font-weight: 500;
+    text-decoration: none;
+}
+
+.login-card a:hover {
     text-decoration: underline;
 }

@@ -1,97 +1,470 @@
 <!DOCTYPE html>
 <html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MultiAmigos - Bem-vindo</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MultiAmigos - Bem-vindo</title>
 
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Custom CSS -->
-    <link rel="stylesheet" th:href="@{/css/main.css}">
+<!-- Bootstrap CSS -->
+<link
+	href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+	rel="stylesheet">
+<!-- Bootstrap Icons -->
+<link rel="stylesheet"
+	href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+<!-- Custom CSS -->
+<link rel="stylesheet" th:href="@{/css/main.css}">
+
 </head>
 <body>
 
-<!-- =========================
+	<!-- =========================
      Navbar
 ========================= -->
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
-    <div class="container">
-        <a class="navbar-brand fw-bold" href="#">MultiAmigos</a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
-                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
-            <ul class="navbar-nav">
-                <li class="nav-item">
-                    <a class="nav-link active" href="#" th:href="@{/auth/login}">Login</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#" th:href="@{/auth/register}">Cadastro</a>
-                </li>
-            </ul>
-        </div>
-    </div>
-</nav>
+	<nav
+		class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm fixed-top">
+		<div class="container">
+			<a class="navbar-brand fw-bold" href="/"> <i
+				class="bi bi-people-fill"></i> MultiAmigos
+			</a>
+			<button class="navbar-toggler" type="button"
+				data-bs-toggle="collapse" data-bs-target="#navbarNav"
+				aria-controls="navbarNav" aria-expanded="false"
+				aria-label="Toggle navigation">
+				<span class="navbar-toggler-icon"></span>
+			</button>
+			<div class="collapse navbar-collapse justify-content-end"
+				id="navbarNav">
+				<ul class="navbar-nav">
+					<li class="nav-item"><a class="nav-link" href="#features"
+						id="featuresLink"> <i class="bi bi-stars"></i> Recursos
+					</a></li>
+					<li class="nav-item" id="loginNavItem"><a class="nav-link"
+						href="/auth/login" id="loginLink"> <i
+							class="bi bi-box-arrow-in-right"></i> Login
+					</a></li>
+					<li class="nav-item"><a
+						class="nav-link btn btn-outline-light btn-sm ms-2"
+						href="/auth/register" id="registerLink"> <i
+							class="bi bi-person-plus"></i> Cadastrar-se
+					</a></li>
+				</ul>
+			</div>
+		</div>
+	</nav>
 
-<!-- =========================
+	<!-- =========================
      Hero Section
 ========================= -->
-<section class="hero-section d-flex align-items-center text-center text-white">
-    <div class="container">
-        <h1 class="display-4 fw-bold">Bem-vindo ao MultiAmigos</h1>
-        <p class="lead mb-4">Gerencie usuários, hierarquias e permissões com segurança e facilidade.</p>
-        <a href="#" class="btn btn-lg btn-light me-2" th:href="@{/auth/login}">Login</a>
-        <a href="#" class="btn btn-lg btn-outline-light" th:href="@{/auth/register}">Cadastrar-se</a>
-    </div>
-</section>
+	<section
+		class="hero-section d-flex align-items-center text-center text-white">
+		<div class="container">
+			<h1 class="display-4 fw-bold mb-4">
+				<i class="bi bi-people-fill"></i> MultiAmigos
+			</h1>
+			<p class="lead mb-4">Sistema de gestão de rede multinível.
+				Conecte pessoas, expanda sua rede e gerencie hierarquias com
+				facilidade.</p>
+			<div class="mt-4">
+				<a href="/auth/login" class="btn btn-lg btn-light me-2"
+					id="heroLoginBtn"> <i class="bi bi-box-arrow-in-right"></i>
+					Acessar Sistema
+				</a> <a href="/auth/register" class="btn btn-lg btn-outline-light"
+					id="heroRegisterBtn"> <i class="bi bi-person-plus"></i> Começar
+					Agora
+				</a>
+			</div>
 
-<!-- =========================
+			<!-- Contador de usuários (opcional - pode ser dinâmico) -->
+			<div class="mt-5 pt-3">
+				<div class="row justify-content-center">
+					<div class="col-auto">
+						<div class="d-flex align-items-center">
+							<i class="bi bi-people display-6 me-3"></i>
+							<div>
+								<h3 class="mb-0" id="userCount">+100</h3>
+								<small>Usuários na rede</small>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<!-- =========================
      Features Section
 ========================= -->
-<section class="features py-5">
-    <div class="container">
-        <div class="row g-4 text-center">
-            <div class="col-md-4">
-                <div class="card shadow-sm border-0 h-100">
-                    <div class="card-body">
-                        <h5 class="card-title">Segurança</h5>
-                        <p class="card-text">Autenticação JWT e controle de acesso baseado em perfis.</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card shadow-sm border-0 h-100">
-                    <div class="card-body">
-                        <h5 class="card-title">Hierarquia</h5>
-                        <p class="card-text">Visualize toda a árvore de usuários e seus filhos.</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card shadow-sm border-0 h-100">
-                    <div class="card-body">
-                        <h5 class="card-title">Responsivo</h5>
-                        <p class="card-text">Design moderno que funciona perfeitamente em celulares e desktops.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
+	<section class="features py-5 bg-light" id="features">
+		<div class="container">
+			<div class="text-center mb-5">
+				<h2 class="fw-bold">
+					<i class="bi bi-stars text-primary"></i> Recursos Principais
+				</h2>
+				<p class="text-muted">Tudo que você precisa para gerenciar sua
+					rede</p>
+			</div>
 
-<!-- =========================
+			<div class="row g-4">
+				<div class="col-md-4">
+					<div class="card shadow-sm border-0 h-100">
+						<div class="card-body text-center p-4">
+							<div class="feature-icon mb-3">
+								<i class="bi bi-shield-lock display-4 text-primary"></i>
+							</div>
+							<h5 class="card-title fw-bold">Segurança Avançada</h5>
+							<p class="card-text text-muted">Autenticação JWT, controle de
+								acesso por perfis (ADMIN/USUARIO) e criptografia de dados.</p>
+							<div class="mt-3">
+								<span class="badge bg-primary">JWT</span> <span
+									class="badge bg-success">SSL</span> <span class="badge bg-info">Criptografia</span>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div class="col-md-4">
+					<div class="card shadow-sm border-0 h-100">
+						<div class="card-body text-center p-4">
+							<div class="feature-icon mb-3">
+								<i class="bi bi-diagram-3 display-4 text-success"></i>
+							</div>
+							<h5 class="card-title fw-bold">Gestão Hierárquica</h5>
+							<p class="card-text text-muted">Visualize árvores completas
+								de usuários, gerencie relações pai-filho e acompanhe sua rede.</p>
+							<div class="mt-3">
+								<span class="badge bg-success">Árvores</span> <span
+									class="badge bg-warning">Hierarquias</span> <span
+									class="badge bg-info">Rede</span>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div class="col-md-4">
+					<div class="card shadow-sm border-0 h-100">
+						<div class="card-body text-center p-4">
+							<div class="feature-icon mb-3">
+								<i class="bi bi-graph-up display-4 text-warning"></i>
+							</div>
+							<h5 class="card-title fw-bold">Dashboard Inteligente</h5>
+							<p class="card-text text-muted">Estatísticas em tempo real,
+								gráficos interativos e relatórios detalhados da sua rede.</p>
+							<div class="mt-3">
+								<span class="badge bg-warning">Gráficos</span> <span
+									class="badge bg-info">Estatísticas</span> <span
+									class="badge bg-success">Relatórios</span>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Segunda linha de recursos -->
+			<div class="row g-4 mt-3">
+				<div class="col-md-6">
+					<div class="card shadow-sm border-0 h-100">
+						<div class="card-body p-4">
+							<div class="d-flex align-items-start">
+								<div class="flex-shrink-0">
+									<i class="bi bi-megaphone display-6 text-danger"></i>
+								</div>
+								<div class="flex-grow-1 ms-3">
+									<h5 class="card-title fw-bold">Sistema de Mensagens</h5>
+									<p class="card-text text-muted">Envie mensagens urgentes,
+										importantes ou informativas para toda a rede ou grupos
+										específicos.</p>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div class="col-md-6">
+					<div class="card shadow-sm border-0 h-100">
+						<div class="card-body p-4">
+							<div class="d-flex align-items-start">
+								<div class="flex-shrink-0">
+									<i class="bi bi-phone display-6 text-info"></i>
+								</div>
+								<div class="flex-grow-1 ms-3">
+									<h5 class="card-title fw-bold">Totalmente Responsivo</h5>
+									<p class="card-text text-muted">Acesse de qualquer
+										dispositivo. Interface otimizada para desktop, tablet e
+										smartphone.</p>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<!-- =========================
+     How It Works Section
+========================= -->
+	<section class="py-5">
+		<div class="container">
+			<div class="text-center mb-5">
+				<h2 class="fw-bold">
+					<i class="bi bi-play-circle text-primary"></i> Como Funciona
+				</h2>
+				<p class="text-muted">3 passos simples para começar</p>
+			</div>
+
+			<div class="row g-4 text-center">
+				<div class="col-md-4">
+					<div class="step-number mb-3">
+						<span class="badge bg-primary rounded-circle p-3">1</span>
+					</div>
+					<h5>Cadastre-se</h5>
+					<p class="text-muted">Crie sua conta gratuitamente em menos de
+						2 minutos.</p>
+				</div>
+
+				<div class="col-md-4">
+					<div class="step-number mb-3">
+						<span class="badge bg-success rounded-circle p-3">2</span>
+					</div>
+					<h5>Convide Amigos</h5>
+					<p class="text-muted">Compartilhe seu link único e expanda sua
+						rede.</p>
+				</div>
+
+				<div class="col-md-4">
+					<div class="step-number mb-3">
+						<span class="badge bg-warning rounded-circle p-3">3</span>
+					</div>
+					<h5>Gerencie sua Rede</h5>
+					<p class="text-muted">Acompanhe sua hierarquia e resultados em
+						tempo real.</p>
+				</div>
+			</div>
+
+			<div class="text-center mt-5">
+				<a href="/auth/register" class="btn btn-primary btn-lg"> <i
+					class="bi bi-rocket-takeoff"></i> Começar Agora
+				</a>
+			</div>
+		</div>
+	</section>
+
+	<!-- =========================
      Footer
 ========================= -->
-<footer class="bg-primary text-white text-center py-3 mt-5">
-    &copy; 2026 MultiAmigos. Todos os direitos reservados.
-</footer>
+	<footer class="bg-dark text-white py-5">
+		<div class="container">
+			<div class="row">
+				<div class="col-md-4 mb-4">
+					<h5 class="fw-bold">
+						<i class="bi bi-people-fill"></i> MultiAmigos
+					</h5>
+					<p class="text-muted">Sistema de gestão de rede multinível para
+						conectar pessoas e expandir oportunidades.</p>
+				</div>
 
-<!-- Bootstrap JS Bundle -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<!-- Custom JS -->
-<script th:src="@{/js/main.js}"></script>
+				<div class="col-md-4 mb-4">
+					<h5 class="fw-bold">Links Rápidos</h5>
+					<ul class="list-unstyled">
+						<li><a href="/auth/login"
+							class="text-white text-decoration-none"> <i
+								class="bi bi-arrow-right-short"></i> Login
+						</a></li>
+						<li><a href="/auth/register"
+							class="text-white text-decoration-none"> <i
+								class="bi bi-arrow-right-short"></i> Cadastro
+						</a></li>
+						<li><a href="#features"
+							class="text-white text-decoration-none"> <i
+								class="bi bi-arrow-right-short"></i> Recursos
+						</a></li>
+					</ul>
+				</div>
+
+				<div class="col-md-4 mb-4">
+					<h5 class="fw-bold">Contato</h5>
+					<ul class="list-unstyled">
+						<li><i class="bi bi-envelope"></i> contato@multiamigos.com</li>
+						<li><i class="bi bi-whatsapp"></i> (11) 99999-9999</li>
+					</ul>
+				</div>
+			</div>
+
+			<hr class="bg-light">
+
+			<div class="text-center pt-3">
+				<small class="text-muted"> &copy; 2026 MultiAmigos. Todos os
+					direitos reservados. | <a href="#"
+					class="text-white text-decoration-none">Política de Privacidade</a>
+					| <a href="#" class="text-white text-decoration-none">Termos de
+						Uso</a>
+				</small>
+			</div>
+		</div>
+	</footer>
+
+	<!-- Bootstrap JS Bundle -->
+	<script
+		src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+	<!-- Script específico para a página inicial -->
+	<script>
+	    document.addEventListener('DOMContentLoaded', function() {
+	        // Atualiza links baseado no login
+	        const token = localStorage.getItem('token');
+	        
+	        // Elementos que precisam ser atualizados
+	        const elementsToUpdate = [
+	            { selector: '#loginLink', loggedText: 'Dashboard', loggedHref: '/admin/dashboard', loggedClass: 'text-success' },
+	            { selector: '#heroLoginBtn', loggedText: 'Ir para Dashboard', loggedHref: '/admin/dashboard', loggedClass: 'btn-success' },
+	            { selector: '#featuresLink', loggedText: 'Meu Dashboard', loggedHref: '/admin/dashboard' }
+	        ];
+	        
+	        if (token) {
+	            // Usuário logado - atualiza todos os elementos
+	            elementsToUpdate.forEach(element => {
+	                const el = document.querySelector(element.selector);
+	                if (el) {
+	                    if (element.loggedText) el.textContent = element.loggedText;
+	                    if (element.loggedHref) el.href = element.loggedHref;
+	                    if (element.loggedClass) {
+	                        if (element.selector.includes('btn')) {
+	                            el.className = el.className.replace('btn-light', element.loggedClass);
+	                            el.className = el.className.replace('nav-link', '');
+	                        } else {
+	                            el.classList.add(element.loggedClass);
+	                        }
+	                    }
+	                    
+	                    // Adiciona ícone para dashboard
+	                    if (element.selector.includes('Link') || element.selector.includes('Btn')) {
+	                        el.innerHTML = `<i class="bi bi-speedometer2"></i> ${el.textContent}`;
+	                    }
+	                }
+	            });
+	            
+	            // Atualiza botão de cadastro para "Ver Minha Rede"
+	            const registerBtn = document.querySelector('#heroRegisterBtn');
+	            if (registerBtn) {
+	                registerBtn.textContent = 'Ver Minha Rede';
+	                registerBtn.href = '/admin/dashboard#usuarios';
+	                registerBtn.className = registerBtn.className.replace('btn-outline-light', 'btn-outline-success');
+	                registerBtn.innerHTML = `<i class="bi bi-diagram-3"></i> ${registerBtn.textContent}`;
+	            }
+	            
+	            const registerLink = document.querySelector('#registerLink');
+	            if (registerLink) {
+	                registerLink.textContent = 'Minha Rede';
+	                registerLink.href = '/admin/dashboard#usuarios';
+	                registerLink.innerHTML = `<i class="bi bi-people"></i> ${registerLink.textContent}`;
+	            }
+	            
+	            // Adiciona opção de logout
+	            const loginNavItem = document.getElementById('loginNavItem');
+	            if (loginNavItem) {
+	                loginNavItem.innerHTML = `
+	                    <div class="dropdown">
+	                        <a class="nav-link dropdown-toggle text-success" href="#" role="button" data-bs-toggle="dropdown">
+	                            <i class="bi bi-person-circle"></i> Minha Conta
+	                        </a>
+	                        <ul class="dropdown-menu">
+	                            <li><a class="dropdown-item" href="/admin/dashboard">
+	                                <i class="bi bi-speedometer2"></i> Dashboard
+	                            </a></li>
+	                            <li><a class="dropdown-item" href="/admin/dashboard#usuarios">
+	                                <i class="bi bi-people"></i> Minha Rede
+	                            </a></li>
+	                            <li><hr class="dropdown-divider"></li>
+	                            <li><a class="dropdown-item text-danger" href="#" onclick="logout()">
+	                                <i class="bi bi-box-arrow-right"></i> Sair
+	                            </a></li>
+	                        </ul>
+	                    </div>
+	                `;
+	            }
+	            
+	            // Tenta buscar estatísticas para mostrar contagem de usuários
+	            fetch('/api/usuarios/estatisticas', {
+	                headers: { 'Authorization': `Bearer ${token}` }
+	            })
+	            .then(response => response.ok ? response.json() : null)
+	            .then(data => {
+	                if (data && data.totalUsuarios) {
+	                    const userCount = document.getElementById('userCount');
+	                    if (userCount) {
+	                        userCount.textContent = `+${data.totalUsuarios}`;
+	                    }
+	                }
+	            })
+	            .catch(err => console.log('Não foi possível carregar estatísticas'));
+	        }
+	        
+	        // Suaviza scroll para âncoras
+	        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+	            anchor.addEventListener('click', function (e) {
+	                e.preventDefault();
+	                const targetId = this.getAttribute('href');
+	                if (targetId !== '#') {
+	                    const targetElement = document.querySelector(targetId);
+	                    if (targetElement) {
+	                        window.scrollTo({
+	                            top: targetElement.offsetTop - 80,
+	                            behavior: 'smooth'
+	                        });
+	                    }
+	                }
+	            });
+	        });
+	        
+	        // Verifica se veio de um redirecionamento com erro
+	        const urlParams = new URLSearchParams(window.location.search);
+	        if (urlParams.has('error')) {
+	            const errorDiv = document.createElement('div');
+	            errorDiv.className = 'alert alert-warning alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3';
+	            errorDiv.style.zIndex = '9999';
+	            errorDiv.style.width = '90%';
+	            errorDiv.style.maxWidth = '500px';
+	            errorDiv.innerHTML = `
+	                <i class="bi bi-exclamation-triangle"></i> 
+	                ${urlParams.get('error') === 'no_token' ? 'Faça login para acessar esta página.' : 
+	                  urlParams.get('error') === 'expired' ? 'Sessão expirada. Faça login novamente.' : 
+	                  'Erro de acesso'}
+	                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+	            `;
+	            document.body.appendChild(errorDiv);
+	            
+	            // Remove após 5 segundos
+	            setTimeout(() => {
+	                errorDiv.remove();
+	            }, 5000);
+	        }
+	        
+	        // Anima números do contador (efeito opcional)
+	        const userCount = document.getElementById('userCount');
+	        if (userCount && userCount.textContent.includes('+')) {
+	            const target = parseInt(userCount.textContent.replace('+', ''));
+	            let current = 0;
+	            const increment = target / 50;
+	            const counter = setInterval(() => {
+	                current += increment;
+	                if (current >= target) {
+	                    current = target;
+	                    clearInterval(counter);
+	                }
+	                userCount.textContent = `+${Math.floor(current)}`;
+	            }, 30);
+	        }
+	    });
+	    
+	    // Função de logout
+	    function logout() {
+	        if (confirm('Deseja realmente sair?')) {
+	            localStorage.removeItem('token');
+	            window.location.href = '/';
+	        }
+	    }
+	</script>
 
 </body>
 </html>

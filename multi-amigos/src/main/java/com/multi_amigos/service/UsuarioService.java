@@ -2,6 +2,8 @@ package com.multi_amigos.service;
 
 import java.util.List;
 
+import com.multi_amigos.DTO.AtualizarUsuarioDTO;
+import com.multi_amigos.DTO.CadastroPublicoDTO;
 import com.multi_amigos.DTO.CadastroUsuarioDTO;
 import com.multi_amigos.DTO.UsuarioDTO;
 import com.multi_amigos.DTO.UsuarioHierarquiaDTO;
@@ -11,6 +13,15 @@ public interface UsuarioService {
 
     // Cadastrar usuário (recebendo a senha)
     UsuarioDTO cadastrarUsuario(CadastroUsuarioDTO dto);
+    
+    // Cadastro público (sem usuarioPaiId)
+    UsuarioDTO cadastroPublico(CadastroPublicoDTO dto);
+    
+    // Cadastro por referência/link
+    UsuarioDTO cadastroPorReferencia(Long referenciaId, CadastroPublicoDTO dto);
+    
+    // Atualizar usuário
+    UsuarioDTO atualizarUsuario(Long id, AtualizarUsuarioDTO dto);
 
     // Buscar usuário por ID
     UsuarioDTO buscarPorId(Long id);
@@ -21,7 +32,17 @@ public interface UsuarioService {
     // Desativar usuário
     void desativarUsuario(Long id);
     
+    // Reativar usuário
+    void reativarUsuario(Long id);
+    
     List<UsuarioDTO> listarTodos();
     
     List<UsuarioHierarquiaDTO> listarHierarquia(Long usuarioId);
+    
+    List<UsuarioDTO> listarAtivos();
+    
+    List<UsuarioDTO> listarPorPerfil(String perfil);
+    
+    // Método adicional: Buscar usuário com hierarquia completa
+    UsuarioDTO buscarComHierarquia(Long id);
 }
