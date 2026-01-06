@@ -11,56 +11,7 @@
 <!-- Bootstrap Icons -->
 <link rel="stylesheet"
 	href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
-<style>
-body {
-	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-	min-height: 100vh;
-	display: flex;
-	align-items: center;
-}
 
-.register-card {
-	background: white;
-	border-radius: 15px;
-	box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-	padding: 2rem;
-}
-
-.form-control:focus {
-	border-color: #667eea;
-	box-shadow: 0 0 0 0.25rem rgba(102, 126, 234, 0.25);
-}
-
-.btn-register {
-	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-	color: white;
-	border: none;
-	padding: 12px;
-	font-weight: 600;
-	transition: all 0.3s;
-}
-
-.btn-register:hover {
-	opacity: 0.9;
-	transform: translateY(-2px);
-	box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-}
-
-.login-link {
-	color: #667eea;
-	text-decoration: none;
-	font-weight: 500;
-}
-
-.login-link:hover {
-	text-decoration: underline;
-	color: #764ba2;
-}
-
-.invalid-feedback {
-	font-size: 0.875rem;
-}
-</style>
 </head>
 <body>
 
@@ -111,7 +62,8 @@ body {
 								class="bi bi-lock"></i> Senha
 							</label> <input type="password" class="form-control" id="senha"
 								placeholder="Mínimo 6 caracteres" required minlength="6">
-							<div class="form-text">A senha deve ter pelo menos 6 caracteres</div>
+							<div class="form-text">A senha deve ter pelo menos 6
+								caracteres</div>
 						</div>
 
 						<div class="mb-4">
@@ -151,47 +103,49 @@ body {
 		src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 	<script>
-    // Máscara de telefone - VERSÃO OTIMIZADA
-    document.addEventListener('DOMContentLoaded', function() {
-        const telefoneInput = document.getElementById('telefone');
-        
-        if (telefoneInput) {
-            // Formatação automática
-            telefoneInput.addEventListener('input', function(e) {
-                let value = e.target.value.replace(/\D/g, '');
-                let formatted = '';
-                
-                if (value.length > 0) {
-                    formatted = '(' + value.substring(0, 2);
-                    
-                    if (value.length > 2) {
-                        formatted += ')';
-                        if (value.length > 7) {
-                            formatted += value.substring(2, 7) + '-' + value.substring(7, 11);
-                        } else {
-                            formatted += value.substring(2, 7);
-                        }
-                    }
-                }
-                
-                e.target.value = formatted;
-            });
-            
-            // Limpa qualquer formatação incorreta ao enviar
-            const form = document.getElementById('registerForm');
-            if (form) {
-                form.addEventListener('submit', function() {
-                    if (telefoneInput.value) {
-                        // Garante o formato correto: (DD)XXXXX-XXXX
-                        let tel = telefoneInput.value;
-                        tel = tel.replace(/\s/g, ''); // Remove espaços
-                        tel = tel.replace(/(\d{2})(\d{5})(\d{4})/, '($1)$2-$3'); // Formata
-                        telefoneInput.value = tel;
-                    }
-                });
-            }
-        }
-    });
-</script>
+		// Máscara de telefone - VERSÃO OTIMIZADA
+		document.addEventListener('DOMContentLoaded', function() {
+			const telefoneInput = document.getElementById('telefone');
+
+			if (telefoneInput) {
+				// Formatação automática
+				telefoneInput.addEventListener('input', function(e) {
+					let value = e.target.value.replace(/\D/g, '');
+					let formatted = '';
+
+					if (value.length > 0) {
+						formatted = '(' + value.substring(0, 2);
+
+						if (value.length > 2) {
+							formatted += ')';
+							if (value.length > 7) {
+								formatted += value.substring(2, 7) + '-'
+										+ value.substring(7, 11);
+							} else {
+								formatted += value.substring(2, 7);
+							}
+						}
+					}
+
+					e.target.value = formatted;
+				});
+
+				// Limpa qualquer formatação incorreta ao enviar
+				const form = document.getElementById('registerForm');
+				if (form) {
+					form.addEventListener('submit', function() {
+						if (telefoneInput.value) {
+							// Garante o formato correto: (DD)XXXXX-XXXX
+							let tel = telefoneInput.value;
+							tel = tel.replace(/\s/g, ''); // Remove espaços
+							tel = tel.replace(/(\d{2})(\d{5})(\d{4})/,
+									'($1)$2-$3'); // Formata
+							telefoneInput.value = tel;
+						}
+					});
+				}
+			}
+		});
+	</script>
 </body>
 </html>

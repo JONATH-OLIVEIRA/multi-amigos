@@ -6,14 +6,17 @@ import java.util.stream.Collectors;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.PathVariable;
 
 import com.multi_amigos.DTO.AtualizarUsuarioDTO;
 import com.multi_amigos.DTO.CadastroPublicoDTO;
 import com.multi_amigos.DTO.CadastroUsuarioDTO;
 import com.multi_amigos.DTO.UsuarioDTO;
+import com.multi_amigos.DTO.UsuarioDetalheDTO;
 import com.multi_amigos.DTO.UsuarioHierarquiaDTO;
 import com.multi_amigos.exceptions.UsuarioNaoEncontradoException;
 import com.multi_amigos.exceptions.ValidacaoException;
+import com.multi_amigos.mapper.UsuarioDetalheMapper;
 import com.multi_amigos.mapper.UsuarioHierarquiaMapper;
 import com.multi_amigos.mapper.UsuarioMapper;
 import com.multi_amigos.model.Perfil;
@@ -159,10 +162,6 @@ public class UsuarioServiceImpl implements UsuarioService {
 			usuario.setSenha(passwordEncoder.encode(dto.getSenha()));
 		}
 
-		// ATENÇÃO: Aqui está a mudança importante!
-		// O DTO tem usuarioPaiId, mas também podemos ter usuarioPai (objeto)
-		// Vamos verificar se o usuário atual tem usuarioPaiId no DTO retornado
-
 		if (dto.getUsuarioPaiId() != null) {
 			if (dto.getUsuarioPaiId().equals(id)) {
 				throw new ValidacaoException("Um usuário não pode ser pai de si mesmo");
@@ -211,32 +210,6 @@ public class UsuarioServiceImpl implements UsuarioService {
 		return false;
 	}
 
-	// =========================
-	// Buscar por ID
-	// =========================
-	@Override
-	@Transactional(readOnly = true)
-	public UsuarioDTO buscarPorId(Long id) {
-		Usuario usuario = usuarioRepository.findById(id)
-				.orElseThrow(() -> new UsuarioNaoEncontradoException("Usuário não encontrado"));
-
-		// Garante que o pai e filhos sejam carregados para o DTO
-		if (usuario.getUsuarioPai() != null) {
-			// Força o carregamento do pai
-			usuario.getUsuarioPai().getId(); // Apenas toca para carregar
-		}
-
-		if (usuario.getFilhos() != null) {
-			// Força o carregamento dos filhos
-			usuario.getFilhos().size();
-		}
-
-		return UsuarioMapper.toDTO(usuario);
-	}
-
-	// =========================
-	// Buscar por email
-	// =========================
 	@Override
 	@Transactional(readOnly = true)
 	public Usuario buscarPorEmail(String email) {
@@ -278,27 +251,37 @@ public class UsuarioServiceImpl implements UsuarioService {
 		usuarioRepository.save(usuario);
 	}
 
-	// =========================
-	// Listar todos os usuários
-	// =========================
+	@Override
+	@Transactional(readOnly = true)
+	public UsuarioDTO buscarComHierarquia(Long id) {
+		// Use o MESMO método otimizado!
+		return buscarPorId(id);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public UsuarioDTO buscarPorId(Long id) {
+		// Use o método com EntityGraph
+		Usuario usuario = usuarioRepository.findComHierarquiaCompletaById(id)
+				.orElseThrow(() -> new UsuarioNaoEncontradoException("Usuário não encontrado"));
+		return UsuarioMapper.toDTO(usuario);
+	}
+
 	@Override
 	@Transactional(readOnly = true)
 	public List<UsuarioDTO> listarTodos() {
-		return usuarioRepository.findAll().stream().map(UsuarioMapper::toDTO).toList();
+		// Use o método otimizado
+		List<Usuario> usuarios = usuarioRepository.findAllComHierarquiaCompleta();
+		return usuarios.stream().map(UsuarioMapper::toDTO).collect(Collectors.toList());
 	}
 
-	// =========================
-	// Listar usuários ativos
-	// =========================
 	@Override
 	@Transactional(readOnly = true)
 	public List<UsuarioDTO> listarAtivos() {
-		return usuarioRepository.findByAtivoTrue().stream().map(UsuarioMapper::toDTO).toList();
+		// Use o método com EntityGraph
+		return usuarioRepository.findAllAtivosComPai().stream().map(UsuarioMapper::toDTO).collect(Collectors.toList());
 	}
 
-	// =========================
-	// Listar por perfil
-	// =========================
 	@Override
 	@Transactional(readOnly = true)
 	public List<UsuarioDTO> listarPorPerfil(String perfil) {
@@ -309,44 +292,25 @@ public class UsuarioServiceImpl implements UsuarioService {
 			throw new ValidacaoException("Perfil inválido: " + perfil);
 		}
 
-		return usuarioRepository.findByPerfil(perfilEnum).stream().map(UsuarioMapper::toDTO).toList();
+		// Use o método com EntityGraph
+		return usuarioRepository.findByPerfilComPai(perfilEnum).stream().map(UsuarioMapper::toDTO)
+				.collect(Collectors.toList());
 	}
 
-	// =========================
-	// Listar hierarquia
-	// =========================
 	@Override
 	public List<UsuarioHierarquiaDTO> listarHierarquia(Long usuarioId) {
-		Usuario usuario = usuarioRepository.findById(usuarioId)
+		// Use o método com filhos
+		Usuario usuario = usuarioRepository.findComFilhosById(usuarioId)
 				.orElseThrow(() -> new UsuarioNaoEncontradoException("Usuário não encontrado"));
-
-		// Força carregamento dos filhos
-		if (usuario.getFilhos() != null) {
-			usuario.getFilhos().size();
-		}
 
 		return usuario.getFilhos() == null ? List.of()
 				: usuario.getFilhos().stream().map(UsuarioHierarquiaMapper::toDTO).collect(Collectors.toList());
 	}
 
-	// =========================
-	// Método adicional: Buscar usuário com hierarquia completa
-	// =========================
-	@Transactional(readOnly = true)
-	public UsuarioDTO buscarComHierarquia(Long id) {
-		Usuario usuario = usuarioRepository.findById(id)
-				.orElseThrow(() -> new UsuarioNaoEncontradoException("Usuário não encontrado"));
-
-		// Força carregamento do pai
-		if (usuario.getUsuarioPai() != null) {
-			usuario.getUsuarioPai().getId();
-		}
-
-		// Força carregamento dos filhos
-		if (usuario.getFilhos() != null) {
-			usuario.getFilhos().size();
-		}
-
-		return UsuarioMapper.toDTO(usuario);
+	public UsuarioDetalheDTO buscarDetalhe(@PathVariable Long id) {
+	    Usuario usuario = usuarioRepository.findById(id)
+	        .orElseThrow(() -> new UsuarioNaoEncontradoException("Usuário não encontrado"));
+	    return UsuarioDetalheMapper.toDTO(usuario);
 	}
+
 }

@@ -9,6 +9,10 @@
     --dark: #212529;
     --muted: #6c757d;
     --light-bg: #f8f9fc;
+
+    /* Novas cores amigáveis */
+    --success-readable: #0f5132;
+    --success-bg-soft: #e6f4ea;
 }
 
 body {
@@ -26,11 +30,27 @@ body {
 
 .navbar-brand,
 .navbar-nav .nav-link {
-    color: #fff !important;
+    color: #ffffff !important;
+    font-weight: 500;
 }
 
 .navbar-nav .nav-link:hover {
-    opacity: 0.85;
+    opacity: 0.9;
+}
+
+/* Corrige links verdes quando logado */
+.navbar .text-success {
+    color: #ffffff !important;
+}
+
+/* Dropdown logado */
+.navbar .dropdown-toggle {
+    color: #ffffff !important;
+}
+
+.dropdown-menu {
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
 }
 
 /* =========================
@@ -58,19 +78,39 @@ body {
     transition: all 0.3s ease;
 }
 
+/* Botão claro */
 .hero-section .btn-light {
     color: var(--primary);
     font-weight: 600;
 }
 
-.hero-section .btn-outline-light {
+/* Ajuste CRÍTICO: botão verde outline no hero */
+.hero-section .btn-outline-success {
+    color: #ffffff;
     border-color: #ffffff;
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+.hero-section .btn-outline-success:hover {
+    background-color: #ffffff;
+    color: var(--success-readable);
+}
+
+/* Botão success sólido */
+.hero-section .btn-success {
+    background-color: #1f9d55;
+    border-color: #1f9d55;
     color: #ffffff;
 }
 
+.hero-section .btn-success:hover {
+    background-color: #198754;
+}
+
+/* Hover geral */
 .hero-section .btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
 }
 
 /* =========================
@@ -122,7 +162,7 @@ body {
 }
 
 /* =========================
-   BUTTONS
+   BUTTONS (GLOBAL)
 ========================= */
 .btn-primary {
     background-color: var(--primary);
@@ -136,6 +176,7 @@ body {
 .btn-success {
     background-color: var(--success);
     border-color: var(--success);
+    color: #ffffff;
 }
 
 .btn-success:hover {
@@ -143,21 +184,25 @@ body {
 }
 
 .btn-outline-success {
-    color: var(--success);
+    color: var(--success-readable);
     border-color: var(--success);
 }
 
 .btn-outline-success:hover {
     background-color: var(--success);
-    color: #fff;
+    color: #ffffff;
 }
 
 /* =========================
-   DROPDOWN
+   LINKS "LOGADO" (JS)
 ========================= */
-.dropdown-menu {
-    border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+/* Garante leitura quando JS troca textos */
+a.text-success {
+    color: var(--success-readable) !important;
+}
+
+.hero-section a.text-success {
+    color: #ffffff !important;
 }
 
 /* =========================
@@ -187,7 +232,7 @@ footer hr {
 }
 
 /* =========================
-   ALERTS (HOME)
+   ALERTS
 ========================= */
 .alert {
     border-radius: 12px;

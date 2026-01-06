@@ -23,6 +23,7 @@ import com.multi_amigos.DTO.AtualizarUsuarioDTO;
 import com.multi_amigos.DTO.CadastroPublicoDTO;
 import com.multi_amigos.DTO.CadastroUsuarioDTO;
 import com.multi_amigos.DTO.UsuarioDTO;
+import com.multi_amigos.DTO.UsuarioDetalheDTO;
 import com.multi_amigos.DTO.UsuarioHierarquiaDTO;
 import com.multi_amigos.service.UsuarioService;
 
@@ -270,4 +271,9 @@ public class UsuarioController {
 			return ResponseEntity.ok(response);
 		}
 	}
+	@GetMapping("/{id}/detalhe")
+    public UsuarioDetalheDTO buscarDetalhe(@PathVariable Long id) {
+        return usuarioService.buscarDetalhe(id);
+    }
+
 }

@@ -6,43 +6,46 @@ import com.multi_amigos.DTO.AtualizarUsuarioDTO;
 import com.multi_amigos.DTO.CadastroPublicoDTO;
 import com.multi_amigos.DTO.CadastroUsuarioDTO;
 import com.multi_amigos.DTO.UsuarioDTO;
+import com.multi_amigos.DTO.UsuarioDetalheDTO;
 import com.multi_amigos.DTO.UsuarioHierarquiaDTO;
 import com.multi_amigos.model.Usuario;
 
 public interface UsuarioService {
 
-    // Cadastrar usuário (recebendo a senha)
-    UsuarioDTO cadastrarUsuario(CadastroUsuarioDTO dto);
-    
-    // Cadastro público (sem usuarioPaiId)
-    UsuarioDTO cadastroPublico(CadastroPublicoDTO dto);
-    
-    // Cadastro por referência/link
-    UsuarioDTO cadastroPorReferencia(Long referenciaId, CadastroPublicoDTO dto);
-    
-    // Atualizar usuário
-    UsuarioDTO atualizarUsuario(Long id, AtualizarUsuarioDTO dto);
+	// Cadastrar usuário (recebendo a senha)
+	UsuarioDTO cadastrarUsuario(CadastroUsuarioDTO dto);
 
-    // Buscar usuário por ID
-    UsuarioDTO buscarPorId(Long id);
+	// Cadastro público (sem usuarioPaiId)
+	UsuarioDTO cadastroPublico(CadastroPublicoDTO dto);
 
-    // Buscar usuário por email (retorna a entidade)
-    Usuario buscarPorEmail(String email);
+	// Cadastro por referência/link
+	UsuarioDTO cadastroPorReferencia(Long referenciaId, CadastroPublicoDTO dto);
 
-    // Desativar usuário
-    void desativarUsuario(Long id);
-    
-    // Reativar usuário
-    void reativarUsuario(Long id);
-    
-    List<UsuarioDTO> listarTodos();
-    
-    List<UsuarioHierarquiaDTO> listarHierarquia(Long usuarioId);
-    
-    List<UsuarioDTO> listarAtivos();
-    
-    List<UsuarioDTO> listarPorPerfil(String perfil);
-    
-    // Método adicional: Buscar usuário com hierarquia completa
-    UsuarioDTO buscarComHierarquia(Long id);
+	// Atualizar usuário
+	UsuarioDTO atualizarUsuario(Long id, AtualizarUsuarioDTO dto);
+
+	// Buscar usuário por ID
+	UsuarioDTO buscarPorId(Long id);
+
+	// Buscar usuário por email (retorna a entidade)
+	Usuario buscarPorEmail(String email);
+
+	// Desativar usuário
+	void desativarUsuario(Long id);
+
+	// Reativar usuário
+	void reativarUsuario(Long id);
+
+	List<UsuarioDTO> listarTodos();
+
+	List<UsuarioHierarquiaDTO> listarHierarquia(Long usuarioId);
+
+	List<UsuarioDTO> listarAtivos();
+
+	List<UsuarioDTO> listarPorPerfil(String perfil);
+
+	UsuarioDetalheDTO buscarDetalhe(Long id);
+
+	// Método adicional: Buscar usuário com hierarquia completa
+	UsuarioDTO buscarComHierarquia(Long id);
 }
