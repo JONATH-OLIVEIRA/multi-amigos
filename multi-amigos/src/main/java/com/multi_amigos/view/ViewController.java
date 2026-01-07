@@ -1,5 +1,6 @@
 package com.multi_amigos.view;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -61,5 +62,21 @@ public class ViewController {
 		}
 
 		return "admin/dashboard";
+	}
+
+	@GetMapping("/admin/busca")
+	public String busca(Model model, HttpServletRequest request, Authentication auth) {
+		System.out.println("🚨🚨🚨 /admin/busca FOI CHAMADO 🚨🚨🚨");
+		System.out.println("URL: " + request.getRequestURL());
+		System.out.println("Token param: " + request.getParameter("token"));
+
+		if (auth != null) {
+			System.out.println("✅ Autenticação: " + auth.getName());
+			System.out.println("✅ Roles: " + auth.getAuthorities());
+		} else {
+			System.out.println("❌ Autenticação NULA!");
+		}
+
+		return "busca";
 	}
 }

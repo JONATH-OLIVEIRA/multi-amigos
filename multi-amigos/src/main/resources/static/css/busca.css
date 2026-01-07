@@ -1,0 +1,409 @@
+/* =========================================================
+   VARIÁVEIS
+========================================================= */
+:root {
+    --primary: #4361ee;
+    --primary-dark: #3a0ca3;
+    --success: #4cc9f0;
+    --danger: #f72585;
+    --warning: #f8961e;
+    --info: #43aa8b;
+    --dark: #212529;
+    --gray: #6c757d;
+    --light-gray: #e9ecef;
+
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+
+    --shadow-sm: 0 2px 8px rgba(0,0,0,0.05);
+    --shadow-md: 0 6px 18px rgba(0,0,0,0.08);
+
+    --transition: all 0.2s ease;
+}
+
+/* =========================================================
+   RESET
+========================================================= */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: #f4f6fb;
+    font-family: "Segoe UI", Tahoma, sans-serif;
+    color: var(--dark);
+}
+
+/* =========================================================
+   LOADING INICIAL
+========================================================= */
+.loading-initial {
+    position: fixed;
+    inset: 0;
+    background: #f4f6fb;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.spinner-initial {
+    width: 48px;
+    height: 48px;
+    border: 4px solid #ddd;
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 1rem;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* =========================================================
+   CONTAINER
+========================================================= */
+.main-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.main-card {
+    background: #fff;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+}
+
+/* =========================================================
+   HEADER
+========================================================= */
+.page-header {
+    background: var(--primary);
+    color: #fff;
+    padding: 1.75rem 2rem;
+}
+
+.page-title {
+    font-size: 1.9rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.page-subtitle {
+    font-size: 0.95rem;
+    opacity: 0.9;
+    margin-top: 0.4rem;
+}
+
+.header-actions {
+    margin-top: 1.2rem;
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+/* =========================================================
+   BOTÕES
+========================================================= */
+.btn {
+    padding: 0.55rem 1.2rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border-radius: var(--radius-md);
+    border: none;
+    cursor: pointer;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.btn-back {
+    background: rgba(255,255,255,0.15);
+    color: #fff;
+}
+
+.btn-back:hover {
+    background: rgba(255,255,255,0.25);
+}
+
+.btn-export,
+.btn-success {
+    background: var(--success);
+    color: #fff;
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: #fff;
+}
+
+.btn-secondary {
+    background: var(--warning);
+    color: #fff;
+}
+
+.btn-outline-primary {
+    background: transparent;
+    border: 1px solid var(--primary);
+    color: var(--primary);
+}
+
+.btn:hover {
+    filter: brightness(0.95);
+}
+
+/* =========================================================
+   FILTROS
+========================================================= */
+.filters-section {
+    padding: 1.75rem 2rem;
+    border-bottom: 1px solid var(--light-gray);
+}
+
+.section-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-bottom: 1.25rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.filter-count {
+    font-size: 0.8rem;
+    background: rgba(67,97,238,0.1);
+    padding: 0.35rem 0.75rem;
+    border-radius: 20px;
+    color: var(--primary);
+}
+
+.filters-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.1rem;
+}
+
+.filter-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 0.3rem;
+    color: var(--gray);
+}
+
+.form-control-enhanced {
+    width: 100%;
+    padding: 0.6rem 0.8rem;
+    border: 1px solid #dcdfe6;
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+}
+
+.form-control-enhanced:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+/* =========================================================
+   TAGS DE FILTRO
+========================================================= */
+.filter-tags-container {
+    margin: 1.5rem 0;
+    padding: 0.8rem;
+    border: 1px dashed var(--light-gray);
+    border-radius: var(--radius-md);
+}
+
+.filter-tags {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.filter-tag {
+    background: #f1f3f9;
+    padding: 0.4rem 0.7rem;
+    font-size: 0.8rem;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.tag-remove {
+    cursor: pointer;
+    color: var(--danger);
+}
+
+/* =========================================================
+   BOTÕES DE AÇÃO
+========================================================= */
+.action-buttons {
+    margin-top: 1.5rem;
+    display: flex;
+    gap: 0.6rem;
+}
+
+/* =========================================================
+   RESULTADOS
+========================================================= */
+.results-section {
+    padding: 2rem;
+}
+
+.results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.25rem;
+}
+
+.results-count {
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+/* =========================================================
+   TABELA
+========================================================= */
+.table-wrapper {
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    border: 1px solid var(--light-gray);
+}
+
+#tabelaUsuarios {
+    width: 100%;
+    font-size: 0.9rem;
+}
+
+#tabelaUsuarios thead th {
+    background: #f4f6fb;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    padding: 0.8rem;
+    border-bottom: 1px solid var(--light-gray);
+}
+
+#tabelaUsuarios tbody td {
+    padding: 0.75rem;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+#tabelaUsuarios tbody tr:hover {
+    background: #f8f9fd;
+}
+
+/* =========================================================
+   AVATAR / STATUS
+========================================================= */
+.avatar-circle {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+}
+
+.badge {
+    padding: 0.35rem 0.7rem;
+    font-size: 0.75rem;
+    border-radius: 20px;
+}
+
+.badge-admin {
+    background: var(--danger);
+    color: #fff;
+}
+
+.badge-user {
+    background: var(--success);
+    color: #fff;
+}
+
+.status {
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.status-active {
+    color: var(--success);
+}
+
+.status-inactive {
+    color: var(--danger);
+}
+
+/* =========================================================
+   AÇÕES
+========================================================= */
+.table-actions {
+    display: flex;
+    justify-content: center;
+    gap: 0.4rem;
+}
+
+.action-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    border: none;
+    background: transparent;
+    cursor: pointer;
+}
+
+.action-btn:hover {
+    background: #eaeefb;
+}
+
+/* =========================================================
+   LOADING OVERLAY
+========================================================= */
+.loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    visibility: hidden;
+}
+
+.loading-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* =========================================================
+   UTILITÁRIOS
+========================================================= */
+.d-none { display: none !important; }
+.text-center { text-align: center; }
+
+/* =========================================================
+   RESPONSIVO
+========================================================= */
+@media (max-width: 768px) {
+    .header-actions,
+    .action-buttons {
+        flex-direction: column;
+    }
+
+    .btn {
+        width: 100%;
+    }
+}

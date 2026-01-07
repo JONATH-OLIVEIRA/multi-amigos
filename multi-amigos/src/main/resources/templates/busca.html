@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MultiAmigos - Busca Avançada</title>
+
+<!-- CSS -->
+<link
+	href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+	rel="stylesheet">
+<link rel="stylesheet"
+	href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet"
+	href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
+<link rel="stylesheet" href="/css/busca.css">
+
+<!-- Preconnect para melhor performance -->
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="preconnect" href="https://cdn.datatables.net">
+</head>
+<body>
+	<!-- Loading inicial -->
+	<div id="initialLoading" class="loading-initial">
+		<div class="spinner-initial"></div>
+		<h3>Carregando Busca Avançada</h3>
+		<p>Por favor, aguarde...</p>
+	</div>
+
+	<!-- Conteúdo principal (será mostrado após autenticação) -->
+	<div id="mainContent" class="d-none">
+		<div class="main-container">
+			<div class="main-card">
+				<!-- Header -->
+				<div class="page-header">
+					<div class="header-content">
+						<h1 class="page-title">
+							<i class="fas fa-search"></i> Busca Avançada
+						</h1>
+						<p class="page-subtitle">Gerencie e filtre os usuários do
+							sistema com precisão</p>
+						<div class="header-actions">
+							<button onclick="voltarDashboard()" class="btn btn-back">
+								<i class="fas fa-arrow-left"></i> Voltar ao Dashboard
+							</button>
+
+						</div>
+					</div>
+				</div>
+
+				<!-- Filtros -->
+				<div class="filters-section">
+					<div class="section-title">
+						<i class="fas fa-filter"></i> Filtros de Busca <span
+							class="filter-count" id="filterCount">0 filtros ativos</span>
+					</div>
+
+					<div class="filters-grid">
+						<div class="filter-group">
+							<label class="filter-label"> <i class="fas fa-user"></i>
+								Nome
+							</label> <input type="text" id="filtroNome" class="form-control-enhanced"
+								placeholder="Digite o nome...">
+						</div>
+
+						<div class="filter-group">
+							<label class="filter-label"> <i class="fas fa-envelope"></i>
+								Email
+							</label> <input type="email" id="filtroEmail"
+								class="form-control-enhanced" placeholder="Digite o email...">
+						</div>
+
+						<div class="filter-group">
+							<label class="filter-label"> <i class="fas fa-user-tag"></i>
+								Perfil
+							</label> <select id="filtroPerfil" class="form-control-enhanced">
+								<option value="">Todos os perfis</option>
+								<option value="ADMIN">Administrador</option>
+								<option value="USUARIO">Usuário</option>
+							</select>
+						</div>
+
+						<div class="filter-group">
+							<label class="filter-label"> <i class="fas fa-circle"></i>
+								Status
+							</label> <select id="filtroStatus" class="form-control-enhanced">
+								<option value="">Todos status</option>
+								<option value="true">Ativo</option>
+								<option value="false">Inativo</option>
+							</select>
+						</div>
+
+						<div class="filter-group">
+							<label class="filter-label"> <i class="fas fa-calendar"></i>
+								Data Início
+							</label> <input type="date" id="filtroDataInicio"
+								class="form-control-enhanced">
+						</div>
+
+						<div class="filter-group">
+							<label class="filter-label"> <i class="fas fa-calendar"></i>
+								Data Fim
+							</label> <input type="date" id="filtroDataFim"
+								class="form-control-enhanced">
+						</div>
+					</div>
+
+					<!-- Tags de filtros ativos -->
+					<div class="filter-tags-container">
+						<div class="filter-tags" id="filterTags"></div>
+					</div>
+
+					<!-- Botões de ação -->
+					<div class="action-buttons">
+						<button id="btnAplicarFiltros" class="btn btn-primary">
+							<i class="fas fa-search"></i> Aplicar Filtros
+						</button>
+						<button id="btnLimpar" class="btn btn-secondary">
+							<i class="fas fa-broom"></i> Limpar Tudo
+						</button>
+						<button id="btnRecarregar" class="btn btn-outline-primary">
+							<i class="fas fa-sync-alt"></i> Recarregar
+						</button>
+					</div>
+				</div>
+
+				<!-- Aviso (se não for admin) -->
+				<div class="alert alert-warning fade" id="adminWarning" role="alert"
+					style="display: none; margin: 1.5rem 2rem;">
+					<i class="fas fa-exclamation-triangle me-2"></i> <strong>Atenção!</strong>
+					Algumas ações estão disponíveis apenas para administradores.
+				</div>
+
+				<!-- Resultados -->
+				<div class="results-section">
+					<div class="results-header">
+						<div class="results-count">
+							<i class="fas fa-users"></i> <span id="totalResults">Carregando...</span>
+							usuários encontrados
+						</div>
+
+					</div>
+
+					<!-- Tabela -->
+					<div class="table-wrapper">
+						<table id="tabelaUsuarios" class="table table-hover"
+							style="width: 100%">
+							<thead>
+								<tr>
+									<th width="70">Avatar</th>
+									<th>Nome</th>
+									<th>Email</th>
+									<th width="120">Perfil</th>
+									<th width="100">Status</th>
+									<th width="140">Data Cadastro</th>
+									<th width="140" class="text-center">Ações</th>
+								</tr>
+							</thead>
+							<tbody>
+								<!-- Dados carregados via JavaScript -->
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Loading Overlay -->
+		<div id="loadingOverlay" class="loading-overlay">
+			<div class="loading-content">
+				<div class="loading-spinner"></div>
+				<p class="loading-text">Processando...</p>
+			</div>
+		</div>
+
+		<!-- Modal de Detalhes - Bootstrap -->
+		<div class="modal fade" id="modalDetalhes" tabindex="-1"
+			aria-labelledby="modalDetalhesLabel" aria-hidden="true">
+			<div class="modal-dialog modal-lg">
+				<div class="modal-content">
+					<div class="modal-header bg-primary text-white">
+						<h5 class="modal-title" id="modalDetalhesLabel">
+							<i class="fas fa-user-circle me-2"></i> Detalhes do Usuário
+						</h5>
+						<button type="button" class="btn-close btn-close-white"
+							data-bs-dismiss="modal" aria-label="Fechar"></button>
+					</div>
+					<div class="modal-body">
+						<div class="container-fluid">
+							<div class="row g-3" id="userDetailsGrid">
+								<!-- Detalhes serão preenchidos dinamicamente -->
+							</div>
+						</div>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-secondary"
+							data-bs-dismiss="modal">
+							<i class="fas fa-times me-2"></i> Fechar
+						</button>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- Scripts (no final do body) -->
+	<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+	<script
+		src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+	<script
+		src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+	<script
+		src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+
+	<!-- Nossos scripts -->
+	<script src="/js/auth-busca.js"></script>
+	<script src="/js/busca.js"></script>
+
+	<!-- Inicialização -->
+	<script>
+		// Inicializa após carregar tudo
+		$(document).ready(function() {
+			// 1. Verifica autenticação
+			if (window.verificarAutenticacao) {
+				window.verificarAutenticacao();
+			}
+
+			// 2. Inicializa a busca
+			if (window.initBuscaAvancada) {
+				setTimeout(function() {
+					window.initBuscaAvancada();
+				}, 100);
+			}
+		});
+
+		// Funções globais básicas
+		function voltarDashboard() {
+			const token = localStorage.getItem('token');
+
+			if (token) {
+				// SOLUÇÃO DE 1 LINHA: Passa o token na URL
+				window.location.href = `/admin/dashboard?token=${token}`;
+			} else {
+				window.location.href = '/login';
+			}
+		}
+
+		// Função fecharModal atualizada para Bootstrap
+		function fecharModal() {
+			const modalElement = document.getElementById('modalDetalhes');
+			if (modalElement) {
+				const modal = bootstrap.Modal.getInstance(modalElement);
+				if (modal) {
+					modal.hide();
+				}
+			}
+		}
+	</script>
+</body>
+</html>

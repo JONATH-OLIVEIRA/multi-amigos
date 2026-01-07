@@ -1,5 +1,6 @@
 package com.multi_amigos.service.implemens;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -277,6 +278,20 @@ public class UsuarioServiceImpl implements UsuarioService {
 
 	@Override
 	@Transactional(readOnly = true)
+	public List<UsuarioDTO> listarTodosAtivos(String nome, Boolean ativo) {
+		// 1. Busca todos com a hierarquia otimizada que você já tem
+		List<Usuario> usuarios = usuarioRepository.findAllComHierarquiaCompleta();
+
+		// 2. Aplica os filtros via Stream (mais rápido que mudar todas as queries do
+		// Repository agora)
+		return usuarios.stream()
+				.filter(u -> (nome == null || nome.isBlank() || u.getNome().toLowerCase().contains(nome.toLowerCase())))
+				.filter(u -> (ativo == null || u.isAtivo() == ativo)).map(UsuarioMapper::toDTO)
+				.collect(Collectors.toList());
+	}
+
+	@Override
+	@Transactional(readOnly = true)
 	public List<UsuarioDTO> listarAtivos() {
 		// Use o método com EntityGraph
 		return usuarioRepository.findAllAtivosComPai().stream().map(UsuarioMapper::toDTO).collect(Collectors.toList());
@@ -308,9 +323,50 @@ public class UsuarioServiceImpl implements UsuarioService {
 	}
 
 	public UsuarioDetalheDTO buscarDetalhe(@PathVariable Long id) {
-	    Usuario usuario = usuarioRepository.findById(id)
-	        .orElseThrow(() -> new UsuarioNaoEncontradoException("Usuário não encontrado"));
-	    return UsuarioDetalheMapper.toDTO(usuario);
+		Usuario usuario = usuarioRepository.findById(id)
+				.orElseThrow(() -> new UsuarioNaoEncontradoException("Usuário não encontrado"));
+		return UsuarioDetalheMapper.toDTO(usuario);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public UsuarioDTO buscarPorEmailDTO(String email) {
+		Usuario usuario = usuarioRepository.findByEmail(email)
+				.orElseThrow(() -> new UsuarioNaoEncontradoException("Usuário não encontrado"));
+		return UsuarioMapper.toDTO(usuario);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<UsuarioDTO> listarComFiltros(String nome, String email, String perfil, Boolean ativo,
+			LocalDate dataInicio, LocalDate dataFim) {
+
+		// Busca todos os usuários
+		List<Usuario> usuarios = usuarioRepository.findAllComHierarquiaCompleta();
+
+		// Aplica filtros via stream
+		return usuarios.stream()
+				.filter(u -> nome == null || nome.isBlank() || u.getNome().toLowerCase().contains(nome.toLowerCase()))
+				.filter(u -> email == null || email.isBlank()
+						|| u.getEmail().toLowerCase().contains(email.toLowerCase()))
+				.filter(u -> perfil == null || perfil.isBlank() || u.getPerfil().name().equalsIgnoreCase(perfil))
+				.filter(u -> ativo == null || u.isAtivo() == ativo).filter(u -> {
+					if (dataInicio == null && dataFim == null)
+						return true;
+
+					if (u.getDataCriacao() == null)
+						return false;
+
+					LocalDate dataUsuario = u.getDataCriacao().toLocalDate();
+
+					if (dataInicio != null && dataFim != null) {
+						return !dataUsuario.isBefore(dataInicio) && !dataUsuario.isAfter(dataFim);
+					} else if (dataInicio != null) {
+						return !dataUsuario.isBefore(dataInicio);
+					} else {
+						return !dataUsuario.isAfter(dataFim);
+					}
+				}).map(UsuarioMapper::toDTO).collect(Collectors.toList());
 	}
 
 }

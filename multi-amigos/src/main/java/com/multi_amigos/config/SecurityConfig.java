@@ -1,11 +1,9 @@
 package com.multi_amigos.config;
 
 import java.util.Arrays;
-import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -16,6 +14,8 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.multi_amigos.util.JwtAuthenticationFilter;
+
+import jakarta.servlet.http.HttpServletResponse;
 
 @Configuration
 @EnableWebSecurity
@@ -43,52 +43,64 @@ public class SecurityConfig {
 	@Bean
 	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
-		http.csrf(csrf -> csrf.disable()
-				)
-					
-				.cors(cors -> cors.configurationSource(corsConfigurationSource()))
+	    http.csrf(csrf -> csrf.disable())
+	            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+	            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+	            
+	            .exceptionHandling(exception -> exception
+	                .authenticationEntryPoint((request, response, authException) -> {
+	                    String uri = request.getRequestURI();
+	                    
+	                    // 1. Erros em APIs retornam JSON
+	                    if (uri.startsWith("/api/")) {
+	                        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+	                        response.setContentType("application/json;charset=UTF-8");
+	                        response.getWriter().write("{\"error\":\"Unauthorized\"}");
+	                    } 
+	                    // 2. Erros em recursos estáticos (favicon, css) NÃO redirecionam para login
+	                    else if (uri.contains(".") && !uri.endsWith(".html")) {
+	                        response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+	                    } 
+	                    // 3. Somente páginas reais redirecionam para o login
+	                    else {
+	                        response.sendRedirect("/auth/login?error=expired");
+	                    }
+	                })
+	                .accessDeniedHandler((request, response, accessDeniedException) -> {
+	                    if (request.getRequestURI().startsWith("/api/")) {
+	                        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+	                        response.setContentType("application/json;charset=UTF-8");
+	                        response.getWriter().write("{\"error\":\"Forbidden\"}");
+	                    } else {
+	                        response.sendRedirect("/auth/login?error=denied");
+	                    }
+	                }))
 
-				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+	            .authorizeHttpRequests(auth -> auth
+	                    // 🔓 Recursos totalmente públicos (Adicionado favicon e webjars)
+	                    .requestMatchers(
+	                        "/", "/home", "/auth/**", 
+	                        "/css/**", "/js/**", "/images/**", 
+	                        "/favicon.ico", "/webjars/**"
+	                    ).permitAll()
 
-				.exceptionHandling(
-						exception -> exception.authenticationEntryPoint((request, response, authException) -> {
-							if (request.getRequestURI().startsWith("/api/")) {
-								response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-								response.setContentType("application/json;charset=UTF-8");
-								response.getWriter().write("{\"error\":\"Unauthorized\"}");
-							} else {
-								response.sendRedirect("/auth/login");
-							}
-						}).accessDeniedHandler((request, response, accessDeniedException) -> {
-							if (request.getRequestURI().startsWith("/api/")) {
-								response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-								response.setContentType("application/json;charset=UTF-8");
-								response.getWriter().write("{\"error\":\"Forbidden\"}");
-							} else {
-								response.sendRedirect("/auth/login");
-							}
-						}))
+	                    // 🔓 Documentação
+	                    .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
 
-				.authorizeHttpRequests(auth -> auth
+	                    // ⚠️ Específicos antes do genérico
+	                    .requestMatchers("/admin/busca").authenticated()
+	                    .requestMatchers("/dashboard/**").authenticated()
 
-						// 🔓 públicos
-						.requestMatchers("/", "/home", "/auth/login", "/auth/login-page", "/auth/register", "/css/**",
-								"/js/**", "/images/**")
-						.permitAll()
+	                    // 🔒 Bloqueio por Role para o restante do admin
+	                    .requestMatchers("/admin/**").hasRole("ADMIN")
 
-						// 🔓 swagger
-						.requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+	                    // 🔒 APIs
+	                    .requestMatchers("/api/**").authenticated()
 
-						// 🔒 dashboard
-						.requestMatchers("/dashboard/**").authenticated().requestMatchers("/admin/**").hasRole("ADMIN")
+	                    .anyRequest().authenticated())
 
-						// 🔒 APIs
-						.requestMatchers("/api/**").authenticated()
+	            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
-						.anyRequest().authenticated())
-
-				.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
-
-		return http.build();
+	    return http.build();
 	}
 }

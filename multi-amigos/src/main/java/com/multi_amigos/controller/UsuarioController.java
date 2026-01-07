@@ -1,12 +1,15 @@
 package com.multi_amigos.controller;
 
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -39,6 +42,18 @@ public class UsuarioController {
 		this.usuarioService = usuarioService;
 	}
 
+	@GetMapping("/me")
+	@PreAuthorize("isAuthenticated()")
+	public ResponseEntity<UsuarioDTO> obterUsuarioAtual(Authentication authentication) {
+		if (authentication == null || !authentication.isAuthenticated()) {
+			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+		}
+
+		String email = authentication.getName();
+		UsuarioDTO usuario = usuarioService.buscarPorEmailDTO(email); // Use o novo método
+		return ResponseEntity.ok(usuario);
+	}
+
 	// ==========================
 	// CADASTRO ADMIN (com todos os campos)
 	// ==========================
@@ -55,21 +70,20 @@ public class UsuarioController {
 	@PostMapping("/cadastro-publico")
 	@PreAuthorize("permitAll()")
 	public ResponseEntity<UsuarioDTO> cadastroPublico(@Valid @RequestBody CadastroPublicoDTO dto) {
-	    UsuarioDTO usuarioCriado = usuarioService.cadastroPublico(dto);
-	    return ResponseEntity.status(HttpStatus.CREATED).body(usuarioCriado);
+		UsuarioDTO usuarioCriado = usuarioService.cadastroPublico(dto);
+		return ResponseEntity.status(HttpStatus.CREATED).body(usuarioCriado);
 	}
-	
+
 	// ==========================
 	// CADASTRO POR LINK/REFERÊNCIA
 	// ==========================
 	@PostMapping("/cadastro-por-link/{referenciaId}")
 	@PreAuthorize("permitAll()")
-	public ResponseEntity<UsuarioDTO> cadastroPorLink(
-	        @PathVariable Long referenciaId,
-	        @Valid @RequestBody CadastroPublicoDTO dto) {
-	    
-	    UsuarioDTO usuarioCriado = usuarioService.cadastroPorReferencia(referenciaId, dto);
-	    return ResponseEntity.status(HttpStatus.CREATED).body(usuarioCriado);
+	public ResponseEntity<UsuarioDTO> cadastroPorLink(@PathVariable Long referenciaId,
+			@Valid @RequestBody CadastroPublicoDTO dto) {
+
+		UsuarioDTO usuarioCriado = usuarioService.cadastroPorReferencia(referenciaId, dto);
+		return ResponseEntity.status(HttpStatus.CREATED).body(usuarioCriado);
 	}
 
 	// ==========================
@@ -90,16 +104,6 @@ public class UsuarioController {
 	public ResponseEntity<UsuarioDTO> buscarPorId(@PathVariable Long id) {
 		UsuarioDTO usuario = usuarioService.buscarPorId(id);
 		return ResponseEntity.ok(usuario);
-	}
-
-	// ==========================
-	// Listar todos os usuários (ADMIN)
-	// ==========================
-	@GetMapping
-	@PreAuthorize("hasRole('ADMIN')")
-	public ResponseEntity<List<UsuarioDTO>> listarTodos() {
-		List<UsuarioDTO> usuarios = usuarioService.listarTodos();
-		return ResponseEntity.ok(usuarios);
 	}
 
 	// ==========================
@@ -227,7 +231,7 @@ public class UsuarioController {
 
 		return ResponseEntity.ok(estatisticas);
 	}
-	
+
 	// ==========================
 	// Gerar link de convite
 	// ==========================
@@ -236,16 +240,16 @@ public class UsuarioController {
 	public ResponseEntity<Map<String, String>> gerarLinkConvite(@PathVariable Long usuarioId) {
 		// Verifica se o usuário existe
 		usuarioService.buscarPorId(usuarioId);
-		
+
 		String linkConvite = "http://localhost:8080/cadastro?ref=" + usuarioId;
-		
+
 		Map<String, String> response = new HashMap<>();
 		response.put("link", linkConvite);
 		response.put("mensagem", "Compartilhe este link para convidar novas pessoas");
-		
+
 		return ResponseEntity.ok(response);
 	}
-	
+
 	// ==========================
 	// Testar link de referência
 	// ==========================
@@ -254,15 +258,15 @@ public class UsuarioController {
 	public ResponseEntity<Map<String, Object>> validarReferencia(@PathVariable Long referenciaId) {
 		try {
 			UsuarioDTO usuario = usuarioService.buscarPorId(referenciaId);
-			
+
 			Map<String, Object> response = new HashMap<>();
 			response.put("valido", usuario.isAtivo());
 			response.put("nome", usuario.getNome());
 			response.put("email", usuario.getEmail());
-			response.put("mensagem", usuario.isAtivo() ? 
-					"Link válido! Você será cadastrado na rede de " + usuario.getNome() : 
-					"Usuário referência está inativo");
-			
+			response.put("mensagem",
+					usuario.isAtivo() ? "Link válido! Você será cadastrado na rede de " + usuario.getNome()
+							: "Usuário referência está inativo");
+
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
 			Map<String, Object> response = new HashMap<>();
@@ -271,9 +275,24 @@ public class UsuarioController {
 			return ResponseEntity.ok(response);
 		}
 	}
+
 	@GetMapping("/{id}/detalhe")
-    public UsuarioDetalheDTO buscarDetalhe(@PathVariable Long id) {
-        return usuarioService.buscarDetalhe(id);
-    }
+	public UsuarioDetalheDTO buscarDetalhe(@PathVariable Long id) {
+		return usuarioService.buscarDetalhe(id);
+	}
+
+	
+	@GetMapping
+	@PreAuthorize("hasRole('ADMIN')")
+	public ResponseEntity<List<UsuarioDTO>> listarTodos(@RequestParam(required = false) String nome,
+			@RequestParam(required = false) String email, @RequestParam(required = false) String perfil,
+			@RequestParam(required = false) Boolean ativo,
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio,
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim) {
+
+		// Passa os filtros para o service
+		List<UsuarioDTO> usuarios = usuarioService.listarComFiltros(nome, email, perfil, ativo, dataInicio, dataFim);
+		return ResponseEntity.ok(usuarios);
+	}
 
 }
