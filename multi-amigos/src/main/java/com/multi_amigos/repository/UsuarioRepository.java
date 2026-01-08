@@ -38,7 +38,9 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
 	@Query("SELECT u FROM Usuario u")
 	List<Usuario> findAllComPai();
 
-	@EntityGraph(attributePaths = { "usuarioPai", "filhos" })
+	@EntityGraph(attributePaths = { "usuarioPai", "filhos", "filhos.filhos", // Netos
+			"filhos.filhos.filhos" // Bisnetos
+	})
 	@Query("SELECT u FROM Usuario u WHERE u.id = :id")
 	Optional<Usuario> findComHierarquiaCompletaById(@Param("id") Long id);
 
@@ -133,11 +135,9 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
 	// =========================
 	// Hierarquia avançada
 	// =========================
-	 @Query("SELECT DISTINCT u FROM Usuario u " +
-	           "LEFT JOIN FETCH u.usuarioPai " +
-	           "LEFT JOIN FETCH u.filhos")
-	    List<Usuario> findAllComHierarquiaCompleta();
-	 
+	@Query("SELECT DISTINCT u FROM Usuario u " + "LEFT JOIN FETCH u.usuarioPai " + "LEFT JOIN FETCH u.filhos")
+	List<Usuario> findAllComHierarquiaCompleta();
+
 	// Busca por perfil e hierarquia
 	@EntityGraph(attributePaths = { "usuarioPai" })
 	List<Usuario> findByPerfilAndUsuarioPaiId(Perfil perfil, Long usuarioPaiId);

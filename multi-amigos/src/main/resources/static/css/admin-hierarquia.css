@@ -1,0 +1,377 @@
+/* admin-hierarquia.css - ESTILOS MODERNOS PARA ÁRVORE GENEALÓGICA */
+
+/* ============================================
+   CONTAINER PRINCIPAL
+   ============================================ */
+.hierarquia-container {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 20px;
+    padding: 2px;
+    margin-bottom: 30px;
+}
+
+.hierarquia-card {
+    background: white;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+    animation: fadeIn 0.6s ease-out;
+}
+
+/* ============================================
+   HEADER
+   ============================================ */
+.hierarquia-header {
+    background: linear-gradient(90deg, #4f46e5 0%, #7c3aed 100%);
+    padding: 25px 30px;
+    position: relative;
+    overflow: hidden;
+}
+
+.hierarquia-header::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200px;
+    height: 200px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+}
+
+.hierarquia-header h4 {
+    font-weight: 700;
+    font-size: 1.8rem;
+    color: white;
+    position: relative;
+    z-index: 1;
+}
+
+.hierarquia-header .text-light {
+    color: rgba(255, 255, 255, 0.9) !important;
+    position: relative;
+    z-index: 1;
+}
+
+/* ============================================
+   CONTROLES
+   ============================================ */
+.controles-modernos {
+    background: #f8fafc;
+    padding: 25px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.controles-modernos .row {
+    row-gap: 20px;
+}
+
+.controles-modernos .row > div {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-label-moderno {
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 6px;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.form-select-moderno,
+.form-control.form-select-moderno {
+    width: 100%;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 1rem;
+    background: white;
+    transition: all 0.3s ease;
+}
+
+.form-select-moderno:focus {
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+    outline: none;
+}
+
+/* ============================================
+   BOTÕES
+   ============================================ */
+.btn-moderno {
+    border-radius: 12px;
+    padding: 10px 18px;
+    font-weight: 600;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+    color: #4f46e5;
+    transition: all 0.25s ease;
+    white-space: nowrap;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04);
+}
+
+.controles-modernos .btn-moderno {
+    margin-top: auto;
+}
+
+.btn-moderno-primary {
+    background: #eef2ff;
+    color: #4f46e5;
+    border: 1px solid #c7d2fe;
+}
+
+.btn-moderno-primary:hover {
+    background: #e0e7ff;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 14px rgba(79, 70, 229, 0.15);
+}
+
+/* ============================================
+   ESTATÍSTICAS
+   ============================================ */
+.estatisticas-modernas {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    padding: 25px;
+}
+
+.estatistica-card-moderno {
+    background: white;
+    border-radius: 16px;
+    padding: 25px;
+    text-align: center;
+    border: 1px solid #e2e8f0;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.estatistica-card-moderno::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #4f46e5, #7c3aed);
+}
+
+.estatistica-card-moderno h2 {
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin: 10px 0;
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.estatistica-card-moderno h6 {
+    color: #64748b;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* ============================================
+   ÁREA DA ÁRVORE
+   ============================================ */
+.arvore-area-moderna {
+    background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+    padding: 30px;
+    min-height: 700px;
+    position: relative;
+}
+
+.arvore-svg-container {
+    background: white;
+    border-radius: 20px;
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.05);
+}
+
+/* ============================================
+   LINHAS DA ÁRVORE (SVG)
+   ============================================ */
+.arvore-svg-container svg path,
+.arvore-svg-container svg line {
+    stroke: #cbd5e1 !important;
+    stroke-width: 1.5px !important;
+    fill: none;
+}
+
+.arvore-svg-container svg path.highlight,
+.arvore-svg-container svg line.highlight {
+    stroke: #6366f1 !important;
+    stroke-width: 2px !important;
+}
+
+/* ============================================
+   NÓS DA ÁRVORE (CLASSES DO JS)
+   ============================================ */
+.arvore-svg-container svg circle {
+    stroke-width: 2px;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.06));
+}
+
+/* 🔴 ADMIN */
+.arvore-svg-container svg circle.node-admin {
+    fill: url(#gradiente-admin);
+    stroke: #b91c1c;
+}
+
+/* 🔵 USUÁRIO ATIVO */
+.arvore-svg-container svg circle.node-usuario {
+    fill: url(#gradiente-usuario);
+    stroke: #1d4ed8;
+}
+
+/* 🟣 USUÁRIO INATIVO */
+.arvore-svg-container svg circle.node-inativo {
+    fill: url(#gradiente-inativo);
+    stroke: #6b21a8;
+    opacity: 0.9;
+}
+
+/* Hover */
+.arvore-svg-container svg circle:hover {
+    transform: scale(1.06);
+    cursor: pointer;
+}
+
+/* ============================================
+   TOOLTIP
+   ============================================ */
+.tooltip-moderno {
+    position: absolute;
+    background: white;
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+    border: 1px solid #e2e8f0;
+    pointer-events: none;
+    z-index: 1000;
+    max-width: 320px;
+    transform: translate(-50%, -100%);
+}
+
+/* ============================================
+   ZOOM
+   ============================================ */
+.zoom-controls-modernos {
+    position: absolute;
+    bottom: 30px;
+    right: 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 100;
+}
+
+/* ============================================
+   RESPONSIVIDADE
+   ============================================ */
+@media (max-width: 768px) {
+    .hierarquia-header h4 {
+        font-size: 1.4rem;
+    }
+
+    .estatisticas-modernas {
+        grid-template-columns: 1fr;
+    }
+
+    .btn-moderno {
+        width: 100%;
+    }
+}
+
+/* ============================================
+   ANIMAÇÕES
+   ============================================ */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+/* ============================================
+   LEGENDA DA HIERARQUIA
+   ============================================ */
+
+.legenda-hierarquia {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 15px 25px;
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
+}
+
+.legenda-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #334155;
+}
+
+/* Bolinha base */
+.legenda-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    display: inline-block;
+    border: 2px solid transparent;
+}
+
+/* 🔴 Administrador */
+.legenda-admin .legenda-dot {
+    background: linear-gradient(135deg, #ef4444, #b91c1c);
+    border-color: #b91c1c;
+}
+
+/* 🔵 Usuário Normal */
+.legenda-usuario .legenda-dot {
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    border-color: #1d4ed8;
+}
+
+/* 🟣 Usuário Inativo */
+.legenda-inativo .legenda-dot {
+    background: linear-gradient(135deg, #a855f7, #6b21a8);
+    border-color: #6b21a8;
+    opacity: 0.9;
+}
+
+/* 👶 Tem filhos */
+.legenda-filhos .legenda-dot {
+    background: #22c55e;
+    border-color: #15803d;
+}
+.legenda-moderna {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 15px 25px;
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
+}
+
+/* reaproveita tudo */
+.legenda-moderna .legenda-item { 
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #334155;
+}
+

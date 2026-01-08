@@ -6,6 +6,7 @@ import java.util.List;
 import com.multi_amigos.DTO.AtualizarUsuarioDTO;
 import com.multi_amigos.DTO.CadastroPublicoDTO;
 import com.multi_amigos.DTO.CadastroUsuarioDTO;
+import com.multi_amigos.DTO.UsuarioArvoreDTO;
 import com.multi_amigos.DTO.UsuarioDTO;
 import com.multi_amigos.DTO.UsuarioDetalheDTO;
 import com.multi_amigos.DTO.UsuarioHierarquiaDTO;
@@ -56,4 +57,5 @@ public interface UsuarioService {
 	
 	List<UsuarioDTO> listarComFiltros(String nome, String email, String perfil, Boolean ativo, 
             LocalDate dataInicio, LocalDate dataFim);
+	 UsuarioArvoreDTO obterArvoreGenealogica(Long id);
 }

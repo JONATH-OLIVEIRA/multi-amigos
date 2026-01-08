@@ -1,7 +1,9 @@
 package com.multi_amigos.service.implemens;
 
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -12,14 +14,17 @@ import org.springframework.web.bind.annotation.PathVariable;
 import com.multi_amigos.DTO.AtualizarUsuarioDTO;
 import com.multi_amigos.DTO.CadastroPublicoDTO;
 import com.multi_amigos.DTO.CadastroUsuarioDTO;
+import com.multi_amigos.DTO.UsuarioArvoreDTO;
 import com.multi_amigos.DTO.UsuarioDTO;
 import com.multi_amigos.DTO.UsuarioDetalheDTO;
 import com.multi_amigos.DTO.UsuarioHierarquiaDTO;
+import com.multi_amigos.DTO.UsuarioNodeDTO;
 import com.multi_amigos.exceptions.UsuarioNaoEncontradoException;
 import com.multi_amigos.exceptions.ValidacaoException;
 import com.multi_amigos.mapper.UsuarioDetalheMapper;
 import com.multi_amigos.mapper.UsuarioHierarquiaMapper;
 import com.multi_amigos.mapper.UsuarioMapper;
+import com.multi_amigos.mapper.UsuarioNodeMapper;
 import com.multi_amigos.model.Perfil;
 import com.multi_amigos.model.Usuario;
 import com.multi_amigos.repository.UsuarioRepository;
@@ -36,11 +41,7 @@ public class UsuarioServiceImpl implements UsuarioService {
 		this.usuarioRepository = usuarioRepository;
 		this.passwordEncoder = new BCryptPasswordEncoder();
 	}
-
-	// =========================
-	// Cadastrar usuário
-	// =========================
-	// UsuarioServiceImpl.java
+	
 	@Override
 	public UsuarioDTO cadastrarUsuario(CadastroUsuarioDTO dto) {
 
@@ -367,6 +368,74 @@ public class UsuarioServiceImpl implements UsuarioService {
 						return !dataUsuario.isAfter(dataFim);
 					}
 				}).map(UsuarioMapper::toDTO).collect(Collectors.toList());
+	}
+	
+	// Adicione este método ao UsuarioServiceImpl
+	// No UsuarioServiceImpl.java - ATUALIZE o método obterArvoreGenealogica
+	@Override
+	@Transactional(readOnly = true)
+	public UsuarioArvoreDTO obterArvoreGenealogica(Long id) {
+	    Usuario usuario = usuarioRepository.findComHierarquiaCompletaById(id)
+	        .orElseThrow(() -> new UsuarioNaoEncontradoException("Usuário não encontrado"));
+	    
+	    // 🔥 Use o novo mapper SEM o parâmetro pai
+	    UsuarioNodeDTO raiz = UsuarioNodeMapper.toTreeDTO(usuario, 0);
+	    
+	    // Calcula estatísticas
+	    Map<String, Object> estatisticas = calcularEstatisticasArvore(raiz);
+	    
+	    UsuarioArvoreDTO arvore = new UsuarioArvoreDTO();
+	    arvore.setRaiz(raiz);
+	    arvore.setTotalNiveis((int) estatisticas.get("totalNiveis"));
+	    arvore.setTotalMembros((int) estatisticas.get("totalMembros"));
+	    arvore.setDistribuicaoPorNivel((Map<Integer, Integer>) estatisticas.get("distribuicaoPorNivel"));
+	    
+	    // DEBUG: Log do tamanho da árvore
+	    System.out.println("🌳 Árvore gerada para usuário ID: " + id);
+	    System.out.println("🌳 Total de membros: " + arvore.getTotalMembros());
+	    System.out.println("🌳 Total de níveis: " + arvore.getTotalNiveis());
+	    
+	    return arvore;
+	}
+
+	private Map<String, Object> calcularEstatisticasArvore(UsuarioNodeDTO node) {
+	    Map<String, Object> estatisticas = new HashMap<>();
+	    Map<Integer, Integer> distribuicao = new HashMap<>();
+	    
+	    int[] contadores = new int[2]; // [0] = totalMembros, [1] = totalNiveis
+	    
+	    calcularEstatisticasRecursivo(node, distribuicao, contadores, 0);
+	    
+	    estatisticas.put("totalMembros", contadores[0]);
+	    estatisticas.put("totalNiveis", contadores[1] + 1); // +1 porque começa em 0
+	    estatisticas.put("distribuicaoPorNivel", distribuicao);
+	    
+	    return estatisticas;
+	}
+
+	private void calcularEstatisticasRecursivo(UsuarioNodeDTO node, 
+	                                          Map<Integer, Integer> distribuicao, 
+	                                          int[] contadores, 
+	                                          int nivelAtual) {
+	    if (node == null) return;
+	    
+	    // Conta este nó
+	    contadores[0]++;
+	    
+	    // Atualiza maior nível
+	    if (nivelAtual > contadores[1]) {
+	        contadores[1] = nivelAtual;
+	    }
+	    
+	    // Atualiza distribuição por nível
+	    distribuicao.put(nivelAtual, distribuicao.getOrDefault(nivelAtual, 0) + 1);
+	    
+	    // Processa filhos
+	    if (node.getFilhos() != null) {
+	        for (UsuarioNodeDTO filho : node.getFilhos()) {
+	            calcularEstatisticasRecursivo(filho, distribuicao, contadores, nivelAtual + 1);
+	        }
+	    }
 	}
 
 }

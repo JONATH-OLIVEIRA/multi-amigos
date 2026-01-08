@@ -1,6 +1,7 @@
 package com.multi_amigos.controller;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.multi_amigos.DTO.AtualizarUsuarioDTO;
 import com.multi_amigos.DTO.CadastroPublicoDTO;
 import com.multi_amigos.DTO.CadastroUsuarioDTO;
+import com.multi_amigos.DTO.UsuarioArvoreDTO;
 import com.multi_amigos.DTO.UsuarioDTO;
 import com.multi_amigos.DTO.UsuarioDetalheDTO;
 import com.multi_amigos.DTO.UsuarioHierarquiaDTO;
@@ -79,11 +81,39 @@ public class UsuarioController {
 	// ==========================
 	@PostMapping("/cadastro-por-link/{referenciaId}")
 	@PreAuthorize("permitAll()")
-	public ResponseEntity<UsuarioDTO> cadastroPorLink(@PathVariable Long referenciaId,
-			@Valid @RequestBody CadastroPublicoDTO dto) {
-
-		UsuarioDTO usuarioCriado = usuarioService.cadastroPorReferencia(referenciaId, dto);
-		return ResponseEntity.status(HttpStatus.CREATED).body(usuarioCriado);
+	public ResponseEntity<?> cadastroPorLink(@PathVariable Long referenciaId,
+	        @Valid @RequestBody CadastroPublicoDTO dto) {
+	    
+	    System.out.println("🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥");
+	    System.out.println("🚀 CADASTRO POR LINK - POST ENDPOINT ACESSADO!");
+	    System.out.println("📝 Referência ID: " + referenciaId);
+	    System.out.println("📝 DTO Recebido:");
+	    System.out.println("   - Nome: " + dto.getNome());
+	    System.out.println("   - Email: " + dto.getEmail());
+	    System.out.println("   - Telefone: " + dto.getTelefone());
+	    System.out.println("   - Senha: [PROTEGIDA]");
+	    System.out.println("🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥");
+	    
+	    try {
+	        UsuarioDTO usuarioCriado = usuarioService.cadastroPorReferencia(referenciaId, dto);
+	        
+	        System.out.println("✅✅✅ CADASTRO BEM-SUCEDIDO!");
+	        System.out.println("   Novo usuário ID: " + usuarioCriado.getId());
+	        System.out.println("   Email: " + usuarioCriado.getEmail());
+	        
+	        return ResponseEntity.status(HttpStatus.CREATED).body(usuarioCriado);
+	        
+	    } catch (Exception e) {
+	        System.err.println("❌❌❌ ERRO NO CADASTRO:");
+	        System.err.println("   Mensagem: " + e.getMessage());
+	        e.printStackTrace();
+	        
+	        return ResponseEntity.badRequest()
+	            .body(Map.of(
+	                "error", e.getMessage(),
+	                "timestamp", LocalDateTime.now()
+	            ));
+	    }
 	}
 
 	// ==========================
@@ -101,6 +131,7 @@ public class UsuarioController {
 	// ==========================
 	@GetMapping("/{id}")
 	@Transactional(readOnly = true)
+	@PreAuthorize("hasRole('ADMIN')")
 	public ResponseEntity<UsuarioDTO> buscarPorId(@PathVariable Long id) {
 		UsuarioDTO usuario = usuarioService.buscarPorId(id);
 		return ResponseEntity.ok(usuario);
@@ -277,11 +308,11 @@ public class UsuarioController {
 	}
 
 	@GetMapping("/{id}/detalhe")
+	@PreAuthorize("hasRole('ADMIN')")
 	public UsuarioDetalheDTO buscarDetalhe(@PathVariable Long id) {
 		return usuarioService.buscarDetalhe(id);
 	}
 
-	
 	@GetMapping
 	@PreAuthorize("hasRole('ADMIN')")
 	public ResponseEntity<List<UsuarioDTO>> listarTodos(@RequestParam(required = false) String nome,
@@ -293,6 +324,12 @@ public class UsuarioController {
 		// Passa os filtros para o service
 		List<UsuarioDTO> usuarios = usuarioService.listarComFiltros(nome, email, perfil, ativo, dataInicio, dataFim);
 		return ResponseEntity.ok(usuarios);
+	}
+	@GetMapping("/{id}/arvore")
+	@PreAuthorize("hasRole('ADMIN')")
+	public ResponseEntity<UsuarioArvoreDTO> obterArvoreGenealogica(@PathVariable Long id) {
+	    UsuarioArvoreDTO arvore = usuarioService.obterArvoreGenealogica(id);
+	    return ResponseEntity.ok(arvore);
 	}
 
 }

@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -17,6 +18,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.multi_amigos.DTO.CadastroUsuarioDTO;
+import com.multi_amigos.model.Usuario;
+import com.multi_amigos.repository.UsuarioRepository;
 import com.multi_amigos.util.JwtAuthenticationFilter;
 
 @RestController
@@ -25,16 +28,49 @@ public class AuthController {
 
     @Autowired
     private AuthService authService;
-
+    
+    @Autowired
+    private UsuarioRepository usuarioRepository;
+    
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
-        String token = authService.login(loginRequest.getEmail(), loginRequest.getSenha());
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("token", token);
-        response.put("type", "Bearer");
-
-        return ResponseEntity.ok(response);
+        try {
+            System.out.println("=== LOGIN REQUEST ===");
+            System.out.println("Email: " + loginRequest.getEmail());
+            
+            // 1. Autentica e obtém token (método retorna String)
+            String token = authService.login(loginRequest.getEmail(), loginRequest.getSenha());
+            
+            // 2. Busca usuário completo para pegar perfil (igual ao register faz)
+            Usuario usuario = usuarioRepository.findByEmail(loginRequest.getEmail())
+                    .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
+            
+            System.out.println("✅ Usuário autenticado: " + usuario.getEmail());
+            System.out.println("✅ Perfil: " + usuario.getPerfil());
+            
+            // 3. 🔥 CONSTRÓI RESPOSTA COMPLETA (igual ao register)
+            Map<String, Object> response = new HashMap<>();
+            response.put("token", token);
+            response.put("type", "Bearer");
+            response.put("perfil", usuario.getPerfil().name());      // ADMIN ou USUARIO
+            response.put("nome", usuario.getNome());
+            response.put("email", usuario.getEmail());
+            response.put("id", usuario.getId());
+            response.put("ativo", usuario.isAtivo());
+            
+            System.out.println("✅ Resposta do login: " + response);
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            System.err.println("❌ Erro no login: " + e.getMessage());
+            e.printStackTrace();
+            
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Falha no login");
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+        }
     }
 
     @PostMapping("/register")

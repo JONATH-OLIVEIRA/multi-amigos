@@ -13,6 +13,7 @@
 <link rel="stylesheet"
 	href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
 <link rel="stylesheet" href="/css/admin-dashboard.css">
+<link rel="stylesheet" href="/css/admin-hierarquia.css">
 </head>
 
 <body class="d-flex">
@@ -25,33 +26,46 @@
 		</div>
 
 		<ul class="nav flex-column">
-			<li class="nav-item"><a class="nav-link active" href="#"
-				id="menuUsuarios"> <i class="bi bi-people"></i> Usuários
-			</a></li>
-			<li class="nav-item"><a class="nav-link" href="#"
-				id="menuMensagens"> <i class="bi bi-megaphone"></i> Mensagens
-			</a></li>
-			<li class="nav-item"><a class="nav-link" href="#"
-				id="menuDashboard"> <i class="bi bi-speedometer2"></i> Dashboard
-			</a></li>
-
-			<!-- ITEM MODIFICADO - SEM onclick -->
-			<li class="nav-item"><a class="nav-link" href="#" id="menuBusca">
+			<li class="nav-item">
+				<a class="nav-link" href="#" id="menuUsuarios">
+					<i class="bi bi-people"></i> Usuários
+				</a>
+			</li>
+			<li class="nav-item">
+				<a class="nav-link" href="#" id="menuHierarquia">
+					<i class="bi bi-diagram-3"></i> Hierarquia
+				</a>
+			</li>
+			<li class="nav-item">
+				<a class="nav-link" href="#" id="menuMensagens">
+					<i class="bi bi-megaphone"></i> Mensagens
+				</a>
+			</li>
+			<li class="nav-item">
+				<a class="nav-link" href="#" id="menuDashboard">
+					<i class="bi bi-speedometer2"></i> Dashboard
+				</a>
+			</li>
+			<li class="nav-item">
+				<a class="nav-link" href="#" id="menuBusca">
 					<i class="bi bi-search"></i> Busca Avançada
-			</a></li>
+				</a>
+			</li>
 
 			<li class="nav-item mt-4">
 				<hr class="border-light">
 			</li>
 
-			<li class="nav-item"><a class="nav-link" href="/" id="menuHome">
+			<li class="nav-item">
+				<a class="nav-link" href="/" id="menuHome">
 					<i class="bi bi-house"></i> Home
-			</a></li>
+				</a>
+			</li>
 		</ul>
 
 		<div class="sidebar-footer p-3 mt-auto">
-			<small class="text-muted"> <i class="bi bi-shield-check"></i>
-				Admin Logado
+			<small class="text-muted">
+				<i class="bi bi-shield-check"></i> Admin Logado
 			</small>
 		</div>
 	</nav>
@@ -59,16 +73,14 @@
 	<!-- Main Content -->
 	<div class="main-content flex-grow-1">
 		<header class="bg-dark text-white p-3">
-			<div
-				class="container-fluid d-flex justify-content-between align-items-center">
+			<div class="container-fluid d-flex justify-content-between align-items-center">
 				<div>
 					<h1 class="h4 mb-0" id="pageTitle">
 						<i class="bi bi-speedometer2"></i> Dashboard Admin
 					</h1>
 					<small class="text-muted" sec:authorize="isAuthenticated()">
-						Usuário: <span sec:authentication="name"></span> <span
-						sec:authentication="principal.authorities"
-						class="badge bg-success ms-2"></span>
+						Usuário: <span sec:authentication="name"></span>
+						<span sec:authentication="principal.authorities" class="badge bg-success ms-2"></span>
 					</small>
 				</div>
 
@@ -79,242 +91,24 @@
 		</header>
 
 		<main class="container-fluid my-4" id="contentArea">
-			<!-- ADICIONE ESTE BOTÃO DE TESTE TEMPORÁRIO -->
-			<div class="alert alert-warning m-3">
-				<h5>🛠️ Teste de Acesso à Busca</h5>
-				<button id="testeBuscaDireto" class="btn btn-danger">
-					<i class="bi bi-search"></i> TESTE: Acessar Busca Avançada
-				</button>
-				<small class="text-muted d-block mt-2">Use este botão para
-					testes</small>
-			</div>
-
+			<!-- Conteúdo será carregado dinamicamente aqui -->
 			<div id="loadingArea" class="text-center my-5">
 				<div class="spinner-border text-primary"></div>
-				<p class="mt-2">Carregando conteúdo...</p>
+				<p class="mt-2">Selecione uma opção no menu para começar</p>
 			</div>
 		</main>
 	</div>
 
-	<!-- ===================================================== -->
-	<!-- TODOS OS MODAIS (mantenha todos) -->
-	<!-- ===================================================== -->
-
 	<!-- Scripts -->
-	<script
-		src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-	<!-- SCRIPT PRINCIPAL DO DASHBOARD - UNIFICADO -->
-	<script>
-	document.addEventListener('DOMContentLoaded', function() {
-	    console.log('=== DASHBOARD INICIALIZADO ===');
-	    
-	    // ====================================================
-	    // 1. VERIFICAÇÃO SEGURA DE TOKEN (MÚLTIPLAS FONTES)
-	    // ====================================================
-	    
-	    let jwtToken = null;
-	    
-	    // A. Tenta da URL (se veio da busca com token na URL)
-	    const urlParams = new URLSearchParams(window.location.search);
-	    const tokenFromUrl = urlParams.get('token');
-	    
-	    if (tokenFromUrl) {
-	        console.log('⚠️ Token encontrado na URL (não recomendado)');
-	        jwtToken = tokenFromUrl;
-	        localStorage.setItem('token', jwtToken);
-	        
-	        // LIMPA IMEDIATAMENTE a URL por segurança
-	        window.history.replaceState({}, document.title, window.location.pathname);
-	        console.log('✅ URL limpa (token removido do histórico)');
-	    }
-	    
-	    // B. Tenta do sessionStorage (método mais seguro - vindo da busca)
-	    if (!jwtToken) {
-	        const tokenFromSession = sessionStorage.getItem('dashboard_token') || 
-	                                 sessionStorage.getItem('jwt_token');
-	        
-	        if (tokenFromSession) {
-	            console.log('✅ Token recebido via sessionStorage (método seguro)');
-	            jwtToken = tokenFromSession;
-	            localStorage.setItem('token', jwtToken);
-	            
-	            // Limpa sessionStorage (uso único)
-	            sessionStorage.removeItem('dashboard_token');
-	            sessionStorage.removeItem('jwt_token');
-	        }
-	    }
-	    
-	    // C. Tenta do localStorage (persistente)
-	    if (!jwtToken) {
-	        jwtToken = localStorage.getItem('token');
-	        if (jwtToken) {
-	            console.log('✅ Token encontrado no localStorage');
-	        }
-	    }
-	    
-	    // ====================================================
-	    // 2. VALIDAÇÃO - SE NÃO TEM TOKEN, REDIRECIONA
-	    // ====================================================
-	    
-	    if (!jwtToken) {
-	        console.error('❌ Token JWT não encontrado em nenhuma fonte!');
-	        console.error('Fontes verificadas: URL, sessionStorage, localStorage');
-	        window.location.href = '/auth/login';
-	        return;
-	    }
-	    
-	    console.log('✅ Token JWT presente e válido');
-	    
-	    // ====================================================
-	    // 3. CONFIGURA INTERCEPTOR GLOBAL PARA APIs
-	    // ====================================================
-	    
-	    const originalFetch = window.fetch;
-	    window.fetch = function(resource, options = {}) {
-	        const newOptions = { ...options };
-	        newOptions.headers = { ...newOptions.headers };
-	        
-	        const url = typeof resource === 'string' ? resource : resource.url;
-	        const method = (newOptions.method || 'GET').toUpperCase();
-	        
-	        // Adiciona JWT token para TODAS as requisições
-	        newOptions.headers['Authorization'] = `Bearer ${jwtToken}`;
-	        
-	        // Configura JSON para métodos que modificam dados
-	        const modifyingMethods = ['POST', 'PUT', 'PATCH', 'DELETE'];
-	        if (modifyingMethods.includes(method)) {
-	            if (newOptions.body && typeof newOptions.body === 'object' && 
-	                !(newOptions.body instanceof FormData)) {
-	                newOptions.headers['Content-Type'] = 'application/json';
-	                newOptions.body = JSON.stringify(newOptions.body);
-	            }
-	        }
-	        
-	        console.log(`📤 Fetch: ${method} ${url}`);
-	        return originalFetch.call(this, resource, newOptions);
-	    };
-	    
-	    console.log('✅ Interceptor configurado');
-	    
-	    // ====================================================
-	    // 4. CONFIGURA EVENTOS DA INTERFACE
-	    // ====================================================
-	    
-	    // Logout
-	    document.getElementById('logoutBtn').addEventListener('click', function() {
-	        console.log('🚪 Efetuando logout...');
-	        
-	        // Limpa TODOS os storages
-	        localStorage.removeItem('token');
-	        sessionStorage.clear();
-	        
-	        // Limpa cookies também se estiver usando
-	        document.cookie.split(";").forEach(c => {
-	            document.cookie = c.replace(/^ +/, "")
-	                .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-	        });
-	        
-	        window.location.href = '/auth/login';
-	    });
-	    
-	    // Busca Avançada - VERSÃO SEGURA (sem token na URL)
-	    document.getElementById('menuBusca').addEventListener('click', function(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    console.log('🔍 Navegando para Busca Avançada...');
-    
-    // 1. Obtém o token do localStorage
-    const jwtToken = localStorage.getItem('token');
-    
-    if (!jwtToken) {
-        alert('❌ Token não encontrado! Faça login novamente.');
-        window.location.href = '/auth/login';
-        return;
-    }
-    
-    console.log('✅ Token encontrado:', jwtToken.substring(0, 20) + '...');
-    
-    // 2. Salva também no sessionStorage (backup)
-    sessionStorage.setItem('busca_token', jwtToken);
-    
-    // 3. **IMPORTANTE: Passa o token na URL para o JwtFilter encontrar**
-    const tokenEncoded = encodeURIComponent(jwtToken);
-    
-    // 4. Navega para busca COM TOKEN NA URL
-    window.location.href = `/admin/busca?token=${tokenEncoded}`;
-    
-    console.log('✅ Navegando para busca com token na URL...');
-});
-
-// ADICIONE também o botão de teste que você colocou:
-document.getElementById('testeBuscaDireto').addEventListener('click', function() {
-    console.log('🧪 TESTE: Acessar Busca Avançada...');
-    
-    const jwtToken = localStorage.getItem('token');
-    
-    if (!jwtToken) {
-        alert('❌ Token não encontrado! Faça login primeiro.');
-        return;
-    }
-    
-    // Método 1: Via sessionStorage
-    sessionStorage.setItem('busca_token', jwtToken);
-    
-    // Método 2: Via URL (fallback)
-    const tokenEncoded = encodeURIComponent(jwtToken);
-    window.location.href = `/admin/busca?token=${tokenEncoded}`;
-    
-    console.log('✅ Teste iniciado...');
-});
-	    
-	    // ====================================================
-	    // 5. VERIFICAÇÃO DE CONEXÃO COM API
-	    // ====================================================
-	    
-	    // Testa se a API está acessível com o token
-	    setTimeout(() => {
-	        fetch('/api/usuarios')
-	            .then(response => {
-	                if (response.ok) {
-	                    console.log('🌐 Conexão com API: ✅ OK');
-	                } else {
-	                    console.warn('⚠️ API retornou status:', response.status);
-	                    if (response.status === 401 || response.status === 403) {
-	                        console.error('❌ Token pode ter expirado!');
-	                        localStorage.removeItem('token');
-	                        window.location.href = '/auth/login';
-	                    }
-	                }
-	            })
-	            .catch(error => {
-	                console.error('❌ Erro ao conectar com API:', error);
-	            });
-	    }, 500);
-	    
-	    console.log('=== DASHBOARD PRONTO ===');
-	
-            
-            // Verifica se tem token e se API funciona
-            setTimeout(() => {
-                fetch('/api/usuarios')
-                    .then(response => {
-                        console.log('🔍 Verificação API:', response.status, response.ok ? '✅ OK' : '❌ FALHOU');
-                        if (!response.ok) {
-                            console.warn('⚠️ API não acessível com token atual');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('❌ Erro na verificação API:', error);
-                    });
-            }, 1000);
-        });
-    </script>
+	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+	<!-- D3.js para gráficos e árvores -->
+	<script src="https://d3js.org/d3.v7.min.js"></script>
 
 	<!-- Seus scripts JavaScript -->
-	<script src="/js/admin-dashboard.js"></script>
+	<script src="/js/admin-dashboard-apoio.js"></script>
+	<script src="/js/admin-dashboard.js"></script>	
 	<script src="/js/admin-mensagens.js"></script>
 	<script src="/js/admin-usuarios.js"></script>
+	<script src="/js/admin-hierarquia.js"></script>
 </body>
 </html>
