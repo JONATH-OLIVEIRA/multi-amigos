@@ -14,7 +14,7 @@ class UsuariosManager {
 
 	// ============================================
 	// FUNÇÕES AUXILIARES DE MENSAGEM
-	// ============================================
+	// =======================================r=====
 
 	mostrarMensagemSucesso(mensagem) {
 		console.log('✅ ' + mensagem);
@@ -702,6 +702,10 @@ class UsuariosManager {
         `;
 
 		document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+		// ✅ aplica máscara no telefone
+		const telInput = document.getElementById('novoUsuarioTelefone');
+		window.aplicarMascaraTelefone(telInput);
 
 		// Configura eventos
 		const modalElement = document.getElementById('novoUsuarioModal');

@@ -239,8 +239,38 @@ class AdminDashboard {
                     this.loadDashboard();
             }
         }, 100);
-    }
+    
+    
+    window.aplicarMascaraTelefone = function(input) {
+  if (!input) return;
 
+  // evita duplicar listeners
+  if (input.dataset.masked === 'true') return;
+  input.dataset.masked = 'true';
+
+  const formatar = (v) => {
+    const d = (v || '').replace(/\D/g, '').slice(0, 11);
+
+    if (d.length >= 11) return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7,11)}`;
+    if (d.length >= 10) return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6,10)}`;
+    if (d.length >= 3)  return `(${d.slice(0,2)}) ${d.slice(2)}`;
+    if (d.length >= 1)  return `(${d}`;
+    return '';
+  };
+
+  input.addEventListener('input', () => {
+    input.value = formatar(input.value);
+  });
+
+  input.addEventListener('blur', () => {
+    input.value = formatar(input.value);
+  });
+
+  // já formata caso venha preenchido
+  input.value = formatar(input.value);
+};
+
+}
     loadUsuarios() {
         const contentArea = document.getElementById('contentArea');
         contentArea.innerHTML = `

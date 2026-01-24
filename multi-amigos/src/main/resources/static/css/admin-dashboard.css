@@ -1,5 +1,5 @@
 /* =========================
-   VARI¡VEIS
+   VARI√ÅVEIS
 ========================= */
 :root {
     --primary: #4e73df;
@@ -129,7 +129,7 @@ header h1 {
     font-weight: 600;
 }
 
-/* Usu·rio logado (email + role) */
+/* Usu√°rio logado (email + role) */
 header small {
     display: block;
     margin-top: 4px;
@@ -167,7 +167,7 @@ header .badge {
     box-shadow: 0 10px 28px rgba(0,0,0,0.12);
 }
 
-/* Usu·rios */
+/* Usu√°rios */
 .user-card {
     border-left: 4px solid var(--primary);
 }
@@ -205,7 +205,7 @@ header .badge {
 }
 
 /* =========================
-   BOT’ES
+   BOT√ïES
 ========================= */
 .btn-primary {
     background-color: var(--primary);
@@ -360,7 +360,7 @@ header.bg-dark span {
 }
 
 /* =========================
-   AJUSTE BOT’ES MODAL (EVITAR SOBREPOSI«√O)
+   AJUSTE BOT√ïES MODAL (EVITAR SOBREPOSI√á√ÉO)
 ========================= */
 .modal-body .d-grid.gap-2 {
     display: flex;
@@ -421,7 +421,7 @@ header.bg-dark span {
     margin-bottom: 1.5rem;
 }
 
-/* Cartıes de superior e subordinados */
+/* Cart√µes de superior e subordinados */
 .hierarchy-card {
     flex: 1 1 calc(50% - 0.5rem);
     min-width: 300px;
@@ -477,7 +477,7 @@ header.bg-dark span {
     border-color: rgba(25, 135, 84, 0.2);
 }
 
-/* Conte˙do vazio */
+/* Conte√∫do vazio */
 .hierarchy-empty-state {
     text-align: center;
     color: #6c757d;
@@ -686,4 +686,36 @@ header.bg-dark span {
 
 .hierarchy-list::-webkit-scrollbar-thumb:hover {
     background: #a8a8a8;
+}
+
+/* ====== Mensagens: header n√£o quebrar bot√µes ====== */
+.mensagem-card .card-header{
+  gap: 10px;
+}
+
+/* Bloco do texto (lado esquerdo) pode encolher e truncar */
+.mensagem-card .mensagem-header-text{
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Bloco dos bot√µes (lado direito) nunca quebra linha */
+.mensagem-card .mensagem-header-actions{
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;   /* üî• impede quebra */
+  flex-shrink: 0;        /* üî• n√£o encolhe */
+}
+
+/* Bot√µes quadradinhos e alinhados */
+.mensagem-card .mensagem-header-actions .btn{
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }

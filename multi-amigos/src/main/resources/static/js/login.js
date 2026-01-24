@@ -1,212 +1,177 @@
-// login.js - VERSÃO CORRIGIDA
+// login.js - VERSÃO AJUSTADA (sem document.write + sem voltar pro pai no ?cadastro=success)
+
 document.addEventListener("DOMContentLoaded", () => {
+  const loginForm = document.getElementById("loginForm");
+  const token = localStorage.getItem("token");
+  const pathname = window.location.pathname;
+  const params = new URLSearchParams(window.location.search);
 
-    const loginForm = document.getElementById("loginForm");
-    const token = localStorage.getItem("token");
+  const isLoginPage = pathname === "/auth/login";
+  const cadastroSuccess = params.get("cadastro") === "success";
+  const hasAuthError = params.has("error"); // expired / denied / etc
 
-    // Se já tem token e está na página de login
-    if (token && window.location.pathname === "/auth/login") {
-        console.log("🔄 Usuário já logado, validando token...");
-        
-        // Primeiro valida token para saber perfil
-        fetch('/auth/validate', {
-            headers: { 'Authorization': `Bearer ${token}` }
+  // ✅ Regra: se veio de cadastro=success ou error=..., NÃO auto-redireciona.
+  // (E opcionalmente limpa token para não “voltar pro pai”)
+  if (isLoginPage && (cadastroSuccess || hasAuthError)) {
+    console.log("ℹ️ Login page com flag (cadastro/error). Não fará auto-redirect.");
+    localStorage.removeItem("token");
+    localStorage.removeItem("perfil");
+  } else {
+    // ✅ Auto-redirect somente se:
+    // - está na página de login
+    // - tem token
+    // - NÃO tem flags cadastro/error
+    if (token && isLoginPage) {
+      console.log("🔄 Usuário já logado, validando token...");
+
+      fetch("/auth/validate", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((response) => {
+          if (response.ok) return response.json();
+          throw new Error("Token inválido");
         })
-        .then(response => {
-            if (response.ok) {
-                return response.json();
-            }
-            throw new Error('Token inválido');
+        .then((userData) => {
+          console.log("✅ Token válido! Perfil:", userData.role);
+
+          const dashboardUrl =
+            userData.role === "ADMIN" ? "/admin/dashboard" : "/usuario/dashboard";
+
+          console.log(`📍 Redirecionando para: ${dashboardUrl}`);
+
+          // ✅ NAVEGAÇÃO NORMAL (evita loop e warning do document.write)
+          window.location.replace(dashboardUrl);
         })
-        .then(userData => {
-            console.log("✅ Token válido! Perfil:", userData.role); // 🔥 MUDOU AQUI
-            
-            // Decide dashboard baseado no perfil
-            const dashboardUrl = userData.role === 'ADMIN' ? '/admin/dashboard' : '/usuario/dashboard'; // 🔥 MUDOU AQUI
-            console.log(`📍 Redirecionando para: ${dashboardUrl}`);
-            
-            // Carrega dashboard correto
-            return fetch(dashboardUrl, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-        })
-        .then(response => {
-            if (!response.ok) throw new Error(`Erro ${response.status}`);
-            return response.text();
-        })
-        .then(html => {
-            document.open();
-            document.write(html);
-            document.close();
-        })
-        .catch(() => {
-            localStorage.removeItem('token');
-            showLoggedInOptions();
+        .catch((err) => {
+          console.warn("⚠️ Token inválido/expirado:", err?.message);
+          localStorage.removeItem("token");
+          localStorage.removeItem("perfil");
+          showLoggedInOptions();
         });
     }
+  }
 
-    if (loginForm) {
-        loginForm.addEventListener("submit", async (e) => {
-            e.preventDefault();
+  // ============================================
+  // SUBMIT LOGIN
+  // ============================================
+  if (loginForm) {
+    loginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
 
-            const email = document.getElementById("email").value.trim();
-            const senha = document.getElementById("senha").value;
+      const email = document.getElementById("email")?.value.trim();
+      const senha = document.getElementById("senha")?.value;
 
-            if (!email || !senha) {
-                alert("Por favor, preencha todos os campos!");
-                return;
-            }
+      if (!email || !senha) {
+        alert("Por favor, preencha todos os campos!");
+        return;
+      }
 
-            const submitBtn = loginForm.querySelector('button[type="submit"]');
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Entrando...';
+      const submitBtn = loginForm.querySelector('button[type="submit"]');
+      const originalBtnHtml = submitBtn ? submitBtn.innerHTML : "";
 
-            try {
-                console.log("📤 Enviando credenciais...");
-                
-                // 1. Faz login
-                const res = await fetch("/auth/login", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ email, senha })
-                });
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML =
+          '<span class="spinner-border spinner-border-sm"></span> Entrando...';
+      }
 
-                if (!res.ok) {
-                    throw new Error("Login falhou! Verifique email e senha.");
-                }
+      try {
+        console.log("📤 Enviando credenciais...");
 
-                const data = await res.json();
-                const token = data.token;
-                const perfil = data.perfil; // 🔥 PERFIL correto!
-                
-                console.log("✅ Login bem-sucedido!");
-                console.log("📊 Dados recebidos:", data);
-                console.log("🎭 Perfil detectado:", perfil);
-                
-                localStorage.setItem("token", token);
-                localStorage.setItem("perfil", perfil);
-
-                // 2. Decide para qual dashboard redirecionar
-                let dashboardUrl;
-                if (perfil === 'ADMIN') {
-                    dashboardUrl = '/admin/dashboard';
-                    console.log("👑 Redirecionando ADMIN para:", dashboardUrl);
-                } else {
-                    dashboardUrl = '/usuario/dashboard';
-                    console.log("👤 Redirecionando USUÁRIO para:", dashboardUrl);
-                }
-
-                // 3. Carrega dashboard correto
-                console.log(`🚀 Carregando: ${dashboardUrl}`);
-                
-                const dashboardRes = await fetch(dashboardUrl, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-
-                console.log(`📊 Status do dashboard: ${dashboardRes.status}`);
-                
-                if (!dashboardRes.ok) {
-                    if (dashboardRes.status === 404) {
-                        throw new Error(`Página ${dashboardUrl} não encontrada!`);
-                    }
-                    throw new Error(`Erro ${dashboardRes.status} ao acessar dashboard`);
-                }
-
-                const html = await dashboardRes.text();
-                
-                // Substitui TODO o conteúdo da página atual
-                document.open();
-                document.write(html);
-                document.close();
-                
-                // Atualiza a URL no histórico
-                window.history.pushState({}, '', dashboardUrl);
-                
-                console.log(`✅ Dashboard ${dashboardUrl} carregado com sucesso!`);
-
-            } catch (err) {
-                console.error("❌ Erro no login:", err);
-                alert("Erro: " + err.message);
-                submitBtn.disabled = false;
-                submitBtn.textContent = "Entrar";
-            }
+        const res = await fetch("/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, senha }),
         });
-    }
 
-    function showLoggedInOptions() {
-        const container = document.querySelector('.card');
-        if (container && !document.querySelector('#loggedInMsg')) {
-            const div = document.createElement('div');
-            div.id = 'loggedInMsg';
-            div.className = 'alert alert-info mt-3';
-            div.innerHTML = `
-                <p><strong>Sessão expirada ou inválida</strong></p>
-                <p>Faça login novamente.</p>
-            `;
-            container.appendChild(div);
+        if (!res.ok) {
+          throw new Error("Login falhou! Verifique email e senha.");
         }
+
+        const data = await res.json();
+        const newToken = data.token;
+        const perfil = data.perfil;
+
+        console.log("✅ Login bem-sucedido!");
+        console.log("📊 Dados recebidos:", data);
+        console.log("🎭 Perfil detectado:", perfil);
+
+        localStorage.setItem("token", newToken);
+        localStorage.setItem("perfil", perfil);
+
+        const dashboardUrl =
+          perfil === "ADMIN" ? "/admin/dashboard" : "/usuario/dashboard";
+
+        console.log(`🚀 Indo para: ${dashboardUrl}`);
+
+        // ✅ NAVEGAÇÃO NORMAL (sem fetch + document.write)
+        window.location.replace(dashboardUrl);
+      } catch (err) {
+        console.error("❌ Erro no login:", err);
+        alert("Erro: " + err.message);
+
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalBtnHtml || "Entrar";
+        }
+      }
+    });
+  }
+
+  function showLoggedInOptions() {
+    const container = document.querySelector(".card");
+    if (container && !document.querySelector("#loggedInMsg")) {
+      const div = document.createElement("div");
+      div.id = "loggedInMsg";
+      div.className = "alert alert-info mt-3";
+      div.innerHTML = `
+        <p><strong>Sessão expirada ou inválida</strong></p>
+        <p>Faça login novamente.</p>
+      `;
+      container.appendChild(div);
     }
+  }
 });
 
-// Funções globais - TAMBÉM CORRIGIR AQUI!
+// ============================================
+// FUNÇÕES GLOBAIS
+// ============================================
 async function goToDashboard() {
-    const token = localStorage.getItem('token');
-    if (!token) {
-        alert("Faça login primeiro!");
-        window.location.href = "/auth/login";
-        return;
+  const token = localStorage.getItem("token");
+  if (!token) {
+    alert("Faça login primeiro!");
+    window.location.href = "/auth/login";
+    return;
+  }
+
+  try {
+    const validateRes = await fetch("/auth/validate", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!validateRes.ok) {
+      throw new Error("Token inválido ou expirado");
     }
 
-    try {
-        // Valida token para saber perfil
-        const validateRes = await fetch('/auth/validate', {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
+    const userData = await validateRes.json();
+    const dashboardUrl =
+      userData.role === "ADMIN" ? "/admin/dashboard" : "/usuario/dashboard";
 
-        if (!validateRes.ok) {
-            throw new Error('Token inválido ou expirado');
-        }
-
-        const userData = await validateRes.json();
-        
-        // 🔥 CORREÇÃO: Usar userData.role em vez de userData.isAdmin
-        const dashboardUrl = userData.role === 'ADMIN' ? '/admin/dashboard' : '/usuario/dashboard'; // 🔥 MUDOU AQUI
-        
-        console.log(`📍 Indo para dashboard: ${dashboardUrl}`);
-
-        // Carrega dashboard
-        const response = await fetch(dashboardUrl, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-
-        if (!response.ok) {
-            throw new Error(`Erro ${response.status}: ${response.statusText}`);
-        }
-
-        const html = await response.text();
-        document.open();
-        document.write(html);
-        document.close();
-        window.history.pushState({}, '', dashboardUrl);
-
-    } catch (err) {
-        console.error("❌ Erro ao ir para dashboard:", err);
-        alert("Erro: " + err.message);
-        localStorage.removeItem('token');
-        window.location.href = "/auth/login";
-    }
+    console.log(`📍 Indo para dashboard: ${dashboardUrl}`);
+    window.location.replace(dashboardUrl);
+  } catch (err) {
+    console.error("❌ Erro ao ir para dashboard:", err);
+    alert("Erro: " + err.message);
+    localStorage.removeItem("token");
+    localStorage.removeItem("perfil");
+    window.location.href = "/auth/login";
+  }
 }
 
 function logout() {
-    if (confirm("Deseja realmente sair?")) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('perfil');
-        window.location.href = "/";
-    }
+  if (confirm("Deseja realmente sair?")) {
+    localStorage.removeItem("token");
+    localStorage.removeItem("perfil");
+    window.location.href = "/";
+  }
 }

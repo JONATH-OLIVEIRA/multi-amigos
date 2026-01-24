@@ -8,22 +8,28 @@ import com.multi_amigos.model.Usuario;
 
 public class UsuarioHierarquiaMapper {
 
-	public static UsuarioHierarquiaDTO toDTO(Usuario usuario) {
-		if (usuario == null)
-			return null;
+    public static UsuarioHierarquiaDTO toDTO(Usuario usuario) {
+        if (usuario == null) return null;
 
-		UsuarioHierarquiaDTO dto = new UsuarioHierarquiaDTO();
-		dto.setId(usuario.getId());
-		dto.setNome(usuario.getNome());
-		dto.setEmail(usuario.getEmail());
-		dto.setPerfil(usuario.getPerfil());
-		dto.setAtivo(usuario.isAtivo());
+        UsuarioHierarquiaDTO dto = new UsuarioHierarquiaDTO();
+        dto.setId(usuario.getId());
+        dto.setNome(usuario.getNome());
+        dto.setEmail(usuario.getEmail());
 
-		// filhos recursivamente
-		List<UsuarioHierarquiaDTO> filhosDTO = usuario.getFilhos() == null ? List.of()
-				: usuario.getFilhos().stream().map(UsuarioHierarquiaMapper::toDTO).collect(Collectors.toList());
+        // ✅ NOVOS
+        dto.setTelefone(usuario.getTelefone());
+        dto.setDataCriacao(usuario.getDataCriacao());
 
-		dto.setFilhos(filhosDTO);
-		return dto;
-	}
+        dto.setPerfil(usuario.getPerfil());
+        dto.setAtivo(usuario.isAtivo());
+
+        // filhos recursivamente
+        List<UsuarioHierarquiaDTO> filhosDTO = usuario.getFilhos() == null ? List.of()
+                : usuario.getFilhos().stream()
+                    .map(UsuarioHierarquiaMapper::toDTO)
+                    .collect(Collectors.toList());
+
+        dto.setFilhos(filhosDTO);
+        return dto;
+    }
 }

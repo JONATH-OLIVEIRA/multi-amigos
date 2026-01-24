@@ -22,105 +22,103 @@ import jakarta.servlet.http.HttpServletResponse;
 @EnableWebSecurity
 public class SecurityConfig {
 
-	private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
-	public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
-		this.jwtAuthenticationFilter = jwtAuthenticationFilter;
-	}
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+    }
 
-	@Bean
-	public CorsConfigurationSource corsConfigurationSource() {
-		CorsConfiguration config = new CorsConfiguration();
-		config.setAllowedOrigins(Arrays.asList("*"));
-		config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
-		config.setAllowedHeaders(Arrays.asList("*"));
-		config.setAllowCredentials(false);
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowedOrigins(Arrays.asList("*"));
+        config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+        config.setAllowedHeaders(Arrays.asList("*"));
+        config.setAllowCredentials(false);
 
-		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-		source.registerCorsConfiguration("/**", config);
-		return source;
-	}
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        return source;
+    }
 
-	@Bean
-	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-		http.csrf(csrf -> csrf.disable()).cors(cors -> cors.configurationSource(corsConfigurationSource()))
-				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
-				.exceptionHandling(
-						exception -> exception.authenticationEntryPoint((request, response, authException) -> {
-							String uri = request.getRequestURI();
+        http
+            .csrf(csrf -> csrf.disable())
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-							// 1. Erros em APIs retornam JSON
-							if (uri.startsWith("/api/")) {
-								response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-								response.setContentType("application/json;charset=UTF-8");
-								response.getWriter().write("{\"error\":\"Unauthorized\"}");
-							}
-							// 2. Erros em recursos estáticos (favicon, css) NÃO redirecionam para login
-							else if (uri.contains(".") && !uri.endsWith(".html")) {
-								response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-							}
-							// 3. Somente páginas reais redirecionam para o login
-							else {
-								response.sendRedirect("/auth/login?error=expired");
-							}
-						}).accessDeniedHandler((request, response, accessDeniedException) -> {
-							if (request.getRequestURI().startsWith("/api/")) {
-								response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-								response.setContentType("application/json;charset=UTF-8");
-								response.getWriter().write("{\"error\":\"Forbidden\"}");
-							} else {
-								response.sendRedirect("/auth/login?error=denied");
-							}
-						}))
+            .exceptionHandling(exception -> exception
+                .authenticationEntryPoint((request, response, authException) -> {
+                    String uri = request.getRequestURI();
 
-				.authorizeHttpRequests(auth -> auth
-						// ==================== 🔓 ENDPOINTS PÚBLICOS ====================
+                    // 1) APIs retornam JSON (não redireciona)
+                    if (uri.startsWith("/api/")) {
+                        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                        response.setContentType("application/json;charset=UTF-8");
+                        response.getWriter().write("{\"error\":\"Unauthorized\"}");
+                        return;
+                    }
 
-						// 1. Páginas públicas e recursos estáticos
-						.requestMatchers("/", "/home", "/auth/**", // Login, registro, etc.
-								"/css/**", "/js/**", "/images/**", "/favicon.ico", "/webjars/**", "/cadastro",
-								"/cadastro/**" // Página de cadastro por link
-						).permitAll()
+                    // 2) Recursos estáticos não devem redirecionar
+                    if (uri.contains(".") && !uri.endsWith(".html")) {
+                        response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+                        return;
+                    }
 
-						// 2. Documentação da API
-						.requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                    // 3) Páginas: redireciona pro login (se realmente precisar)
+                    response.sendRedirect("/auth/login?error=expired");
+                })
+                .accessDeniedHandler((request, response, accessDeniedException) -> {
+                    if (request.getRequestURI().startsWith("/api/")) {
+                        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                        response.setContentType("application/json;charset=UTF-8");
+                        response.getWriter().write("{\"error\":\"Forbidden\"}");
+                    } else {
+                        response.sendRedirect("/auth/login?error=denied");
+                    }
+                })
+            )
 
-						// 3. APIs públicas de cadastro (MUST COME BEFORE /api/** !!!)
-						.requestMatchers(HttpMethod.POST, "/api/usuarios/cadastro-publico",
-								"/api/usuarios/cadastro-por-link/**")
-						.permitAll()
+            .authorizeHttpRequests(auth -> auth
 
-						// 4. Preflight CORS requests (OPTIONS)
-						.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                // ==================== 🔓 PÚBLICO (PÁGINAS E RECURSOS) ====================
+                .requestMatchers(
+                    "/", "/home",
+                    "/auth/**",
+                    "/css/**", "/js/**", "/images/**", "/favicon.ico", "/webjars/**",
+                    "/cadastro", "/cadastro/**",
 
-						// ==================== 🔐 ENDPOINTS AUTENTICADOS ====================
+                    // ✅ IMPORTANTE: libera as páginas do admin para não cair no login no refresh
+                    // (a segurança real fica nas APIs /api/**)
+                    "/admin/**",
+                    "/usuario/**",
+                    "/dashboard/**"
+                ).permitAll()
 
-						// 1. Dashboard do usuário comum (qualquer usuário autenticado)
-						.requestMatchers("/usuario/dashboard").authenticated()
+                // Swagger
+                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
 
-						// 2. Dashboard geral
-						.requestMatchers("/dashboard/**").authenticated()
+                // Preflight
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-						// 3. Admin busca (autenticado mas não precisa de role específica)
-						.requestMatchers("/admin/busca").authenticated()
+                // ==================== 🔓 APIs PÚBLICAS ESPECÍFICAS ====================
+                .requestMatchers(HttpMethod.POST,
+                    "/api/usuarios/cadastro-publico",
+                    "/api/usuarios/cadastro-por-link/**"
+                ).permitAll()
 
-						// ==================== 🔒 ENDPOINTS COM ROLES ESPECÍFICAS ====================
+                // ==================== 🌐 APIs PROTEGIDAS ====================
+                // Tudo que é /api/ precisa de token
+                .requestMatchers("/api/**").authenticated()
 
-						// 1. Admin (apenas ROLE_ADMIN)
-						.requestMatchers("/admin/**").hasRole("ADMIN")
+                // Qualquer outra requisição (se existir)
+                .anyRequest().permitAll()
+            )
 
-						// ==================== 🌐 APIs PROTEGIDAS ====================
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
-						// APIs em geral (exceções já foram tratadas acima)
-						// IMPORTANTE: Esta regra DEVE vir por último!
-						.requestMatchers("/api/**").authenticated()
-
-						// Qualquer outra requisição
-						.anyRequest().authenticated())
-
-				.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
-
-		return http.build();
-	}
+        return http.build();
+    }
 }

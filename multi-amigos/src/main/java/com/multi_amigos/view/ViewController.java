@@ -15,9 +15,10 @@ import jakarta.servlet.http.HttpServletRequest;
 
 @Controller
 public class ViewController {
-	
+
 	@Autowired
 	UsuarioService usuarioService;
+
 	// =========================
 	// Página inicial
 	// =========================
@@ -86,71 +87,72 @@ public class ViewController {
 
 		return "busca";
 	}
-	
-	// No ViewController.java - ADICIONE:
+
 	@GetMapping("/usuario/dashboard")
-	@PreAuthorize("isAuthenticated()")
-	public String usuarioDashboard(Model model, Authentication authentication, HttpServletRequest request) {
-	    
-	    System.out.println("=== /usuario/dashboard ACESSADO ===");
-	    System.out.println("Usuário: " + authentication.getName());
-	    System.out.println("Roles: " + authentication.getAuthorities());
-	    System.out.println("URL: " + request.getRequestURL());
-	    
-	    model.addAttribute("username", authentication.getName());
-	    model.addAttribute("isAuthenticated", true);
-	    model.addAttribute("isAdmin", false); // Sempre false para usuário comum
-	    
-	    return "usuario/dashboard"; // Thymeleaf vai buscar templates/usuario/dashboard.html
+	public String usuarioDashboard(Model model, Authentication authentication) {
+
+		// Se tiver auth (ex.: se um dia você migrar p/ cookie), aproveita
+		if (authentication != null && authentication.isAuthenticated()) {
+			model.addAttribute("username", authentication.getName());
+			model.addAttribute("isAuthenticated", true);
+		} else {
+			// Sem auth no refresh (localStorage não chega no server)
+			model.addAttribute("username", null);
+			model.addAttribute("isAuthenticated", false);
+		}
+
+		model.addAttribute("isAdmin", false);
+		return "usuario/dashboard";
 	}
-	
+
 	// No ViewController.java - ADICIONAR:
 	@GetMapping("/cadastro")
-	public String cadastroPorLink(@RequestParam(value = "ref", required = false) Long referenciaId, 
-	                             Model model, HttpServletRequest request) {
-	    
-	    System.out.println("=== /cadastro ACESSADO ===");
-	    System.out.println("Referência ID: " + referenciaId);
-	    
-	    if (referenciaId != null) {
-	        try {
-	            UsuarioDTO usuarioReferencia = usuarioService.buscarPorId(referenciaId);
-	            
-	            // VERIFICAÇÃO DETALHADA
-	            System.out.println("=== VERIFICAÇÃO DA REFERÊNCIA ===");
-	            System.out.println("ID: " + usuarioReferencia.getId());
-	            System.out.println("Nome: " + usuarioReferencia.getNome());
-	            System.out.println("Email: " + usuarioReferencia.getEmail());
-	            System.out.println("Ativo (boolean): " + usuarioReferencia.isAtivo());
-	        
-	            System.out.println("===============================");
-	            
-	            // Tente diferentes abordagens
-	            boolean referenciaValida = usuarioReferencia.isAtivo();
-	            System.out.println("referenciaValida (boolean): " + referenciaValida);
-	            
-	            // Adiciona atributos - TESTE com diferentes nomes
-	            model.addAttribute("referenciaId", referenciaId);
-	            model.addAttribute("referenciaNome", usuarioReferencia.getNome());
-	            model.addAttribute("referenciaEmail", usuarioReferencia.getEmail());
-	            model.addAttribute("referenciaValida", referenciaValida);
-	            model.addAttribute("valido", referenciaValida); // Nome alternativo
-	            model.addAttribute("ativo", usuarioReferencia.isAtivo()); // Outro nome
-	            
-	            System.out.println("✅ Referência válida: " + usuarioReferencia.getNome() + " | Ativo: " + referenciaValida);
-	            
-	        } catch (Exception e) {
-	            System.err.println("❌ Referência inválida: " + e.getMessage());
-	            model.addAttribute("referenciaValida", false);
-	            model.addAttribute("valido", false);
-	            model.addAttribute("erroMensagem", "Link de referência inválido ou usuário não encontrado.");
-	        }
-	    } else {
-	        System.out.println("⚠️ Cadastro sem referência (público)");
-	        model.addAttribute("referenciaValida", true);
-	        model.addAttribute("valido", true);
-	    }
-	    
-	    return "cadastro-por-link";
+	public String cadastroPorLink(@RequestParam(value = "ref", required = false) Long referenciaId, Model model,
+			HttpServletRequest request) {
+
+		System.out.println("=== /cadastro ACESSADO ===");
+		System.out.println("Referência ID: " + referenciaId);
+
+		if (referenciaId != null) {
+			try {
+				UsuarioDTO usuarioReferencia = usuarioService.buscarPorId(referenciaId);
+
+				// VERIFICAÇÃO DETALHADA
+				System.out.println("=== VERIFICAÇÃO DA REFERÊNCIA ===");
+				System.out.println("ID: " + usuarioReferencia.getId());
+				System.out.println("Nome: " + usuarioReferencia.getNome());
+				System.out.println("Email: " + usuarioReferencia.getEmail());
+				System.out.println("Ativo (boolean): " + usuarioReferencia.isAtivo());
+
+				System.out.println("===============================");
+
+				// Tente diferentes abordagens
+				boolean referenciaValida = usuarioReferencia.isAtivo();
+				System.out.println("referenciaValida (boolean): " + referenciaValida);
+
+				// Adiciona atributos - TESTE com diferentes nomes
+				model.addAttribute("referenciaId", referenciaId);
+				model.addAttribute("referenciaNome", usuarioReferencia.getNome());
+				model.addAttribute("referenciaEmail", usuarioReferencia.getEmail());
+				model.addAttribute("referenciaValida", referenciaValida);
+				model.addAttribute("valido", referenciaValida); // Nome alternativo
+				model.addAttribute("ativo", usuarioReferencia.isAtivo()); // Outro nome
+
+				System.out.println(
+						"✅ Referência válida: " + usuarioReferencia.getNome() + " | Ativo: " + referenciaValida);
+
+			} catch (Exception e) {
+				System.err.println("❌ Referência inválida: " + e.getMessage());
+				model.addAttribute("referenciaValida", false);
+				model.addAttribute("valido", false);
+				model.addAttribute("erroMensagem", "Link de referência inválido ou usuário não encontrado.");
+			}
+		} else {
+			System.out.println("⚠️ Cadastro sem referência (público)");
+			model.addAttribute("referenciaValida", true);
+			model.addAttribute("valido", true);
+		}
+
+		return "cadastro-por-link";
 	}
 }
