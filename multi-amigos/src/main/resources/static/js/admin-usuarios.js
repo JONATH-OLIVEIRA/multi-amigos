@@ -1639,8 +1639,11 @@ class UsuariosManager {
 			linhas.push(row.join(';'));
 		}
 
-		const csv = linhas.join('\n');
-		this.downloadArquivo(csv, nomeArquivo, 'text/csv;charset=utf-8;');
+		// ✅ Excel/Windows: use CRLF + BOM UTF-8 pra não quebrar acentos/cedilha
+		const csv = linhas.join('\r\n');
+		const csvComBOM = '\uFEFF' + csv;
+
+		this.downloadArquivo(csvComBOM, nomeArquivo, 'text/csv;charset=utf-8;');
 	}
 }
 // ============================================
