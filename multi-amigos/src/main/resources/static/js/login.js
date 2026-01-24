@@ -1,4 +1,4 @@
-// login.js - VERSÃO FINAL COM DETECÇÃO DE PERFIL
+// login.js - VERSÃO CORRIGIDA
 document.addEventListener("DOMContentLoaded", () => {
 
     const loginForm = document.getElementById("loginForm");
@@ -19,10 +19,10 @@ document.addEventListener("DOMContentLoaded", () => {
             throw new Error('Token inválido');
         })
         .then(userData => {
-            console.log("✅ Token válido! Perfil:", userData.isAdmin ? 'ADMIN' : 'USUARIO');
+            console.log("✅ Token válido! Perfil:", userData.role); // 🔥 MUDOU AQUI
             
             // Decide dashboard baseado no perfil
-            const dashboardUrl = userData.isAdmin ? '/admin/dashboard' : '/usuario/dashboard';
+            const dashboardUrl = userData.role === 'ADMIN' ? '/admin/dashboard' : '/usuario/dashboard'; // 🔥 MUDOU AQUI
             console.log(`📍 Redirecionando para: ${dashboardUrl}`);
             
             // Carrega dashboard correto
@@ -77,14 +77,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 const data = await res.json();
                 const token = data.token;
-                const perfil = data.perfil; // 🔥 AGORA TEM PERFIL!
+                const perfil = data.perfil; // 🔥 PERFIL correto!
                 
                 console.log("✅ Login bem-sucedido!");
                 console.log("📊 Dados recebidos:", data);
                 console.log("🎭 Perfil detectado:", perfil);
                 
                 localStorage.setItem("token", token);
-                localStorage.setItem("perfil", perfil); // Salva perfil também
+                localStorage.setItem("perfil", perfil);
 
                 // 2. Decide para qual dashboard redirecionar
                 let dashboardUrl;
@@ -150,7 +150,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
-// Funções globais
+// Funções globais - TAMBÉM CORRIGIR AQUI!
 async function goToDashboard() {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -172,7 +172,9 @@ async function goToDashboard() {
         }
 
         const userData = await validateRes.json();
-        const dashboardUrl = userData.isAdmin ? '/admin/dashboard' : '/usuario/dashboard';
+        
+        // 🔥 CORREÇÃO: Usar userData.role em vez de userData.isAdmin
+        const dashboardUrl = userData.role === 'ADMIN' ? '/admin/dashboard' : '/usuario/dashboard'; // 🔥 MUDOU AQUI
         
         console.log(`📍 Indo para dashboard: ${dashboardUrl}`);
 

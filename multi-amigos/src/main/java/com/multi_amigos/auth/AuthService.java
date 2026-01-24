@@ -27,26 +27,38 @@ public class AuthService {
     private BCryptPasswordEncoder passwordEncoder;
 
     // ========================
-    // LOGIN
+    // LOGIN OTIMIZADO - EVITA CONSULTA REDUNDANTE
     // ========================
-    public String login(String email, String senha) {
-
+    public Map<String, Object> login(String email, String senha) {
+        // ✅ Busca o usuário UMA ÚNICA VEZ
         Usuario usuario = usuarioService.buscarPorEmail(email);
 
-        // ✅ Usa LoginInvalidoException para tratar senha incorreta
+        // ✅ Valida a senha
         if (!passwordEncoder.matches(senha, usuario.getSenha())) {
             throw new LoginInvalidoException("Senha inválida para o usuário: " + email);
         }
 
-        return jwtUtil.generateToken(usuario);
+        // ✅ Gera o token
+        String token = jwtUtil.generateToken(usuario);
+
+        // ✅ Retorna resposta completa em UM único método
+        Map<String, Object> response = new HashMap<>();
+        response.put("token", token);
+        response.put("type", "Bearer");
+        response.put("perfil", usuario.getPerfil().name());
+        response.put("nome", usuario.getNome());
+        response.put("email", usuario.getEmail());
+        response.put("id", usuario.getId());
+        response.put("ativo", usuario.isAtivo());
+
+        return response;
     }
 
     // ========================
     // REGISTER
     // ========================
     public Map<String, Object> register(CadastroUsuarioDTO cadastroDTO) {
-
-        // ⚡ Usa apenas o DTO de cadastro, que contém a senha
+        // ⚡ Usa apenas o DTO de cadastro
         UsuarioDTO usuarioDTO = usuarioService.cadastrarUsuario(cadastroDTO);
 
         // Busca a entidade completa para gerar o token
@@ -57,9 +69,12 @@ public class AuthService {
         Map<String, Object> response = new HashMap<>();
         response.put("message", "Usuário registrado com sucesso");
         response.put("token", token);
+        response.put("type", "Bearer"); // Adicionar type
         response.put("perfil", usuario.getPerfil().name());
         response.put("email", usuario.getEmail());
         response.put("nome", usuario.getNome());
+        response.put("id", usuario.getId()); // Adicionar ID
+        response.put("ativo", usuario.isAtivo()); // Adicionar status
 
         return response;
     }

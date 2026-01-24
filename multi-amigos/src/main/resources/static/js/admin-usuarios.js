@@ -1242,53 +1242,407 @@ class UsuariosManager {
 	}
 
 	// ============================================
-	// RELATÓRIO
+	// GERAR RELATÓRIO COM FILTROS (NOVO)
 	// ============================================
 
 	gerarRelatorioUsuarios() {
-		console.log('📊 Gerando relatório de usuários...');
+		console.log('📊 Abrindo opções de exportação...');
 
+		// Remove modal existente se houver
+		const existingModal = document.getElementById('relatorioModal');
+		if (existingModal) {
+			existingModal.remove();
+		}
+
+		// Cria modal de opções de exportação
+		const modalHTML = `
+			<div class="modal fade" id="relatorioModal" tabindex="-1">
+				<div class="modal-dialog">
+					<div class="modal-content">
+						<div class="modal-header">
+							<h5 class="modal-title"><i class="bi bi-download"></i> Exportar Relatório</h5>
+							<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+						</div>
+						<div class="modal-body">
+							<div class="mb-4">
+								<h6 class="mb-3">Escolha o tipo de exportação:</h6>
+								
+								<div class="form-check mb-3">
+									<input class="form-check-input" type="radio" name="exportType" 
+										   id="exportAll" value="all" checked>
+									<label class="form-check-label" for="exportAll">
+										<strong>Todos os usuários</strong>
+										<br>
+										<small class="text-muted">Exporta todos os usuários do sistema</small>
+									</label>
+								</div>
+								
+								<div class="form-check mb-3">
+									<input class="form-check-input" type="radio" name="exportType" 
+										   id="exportSubtree" value="subtree">
+									<label class="form-check-label" for="exportSubtree">
+										<strong>Hierarquia específica</strong>
+										<br>
+										<small class="text-muted">Exporta um usuário e toda sua rede abaixo</small>
+									</label>
+								</div>
+							</div>
+							
+							<div id="subtreeOptions" class="d-none">
+								<div class="mb-3">
+									<label class="form-label">Selecione o usuário base:</label>
+									<select class="form-select" id="userSelect">
+										<option value="">Selecione um usuário...</option>
+									</select>
+									<small class="text-muted">A exportação incluirá este usuário e todos abaixo dele na hierarquia</small>
+								</div>
+								
+								<div class="alert alert-info">
+									<i class="bi bi-info-circle"></i>
+									Será exportado o usuário selecionado, seus filhos, netos, etc.
+								</div>
+							</div>
+							
+							<div class="mb-3">
+								<label class="form-label">Formato:</label>
+								<div>
+									<div class="form-check form-check-inline">
+										<input class="form-check-input" type="radio" name="exportFormat" 
+											   id="formatCSV" value="csv" checked>
+										<label class="form-check-label" for="formatCSV">CSV</label>
+									</div>
+									<div class="form-check form-check-inline">
+										<input class="form-check-input" type="radio" name="exportFormat" 
+											   id="formatJSON" value="json">
+										<label class="form-check-label" for="formatJSON">JSON</label>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="modal-footer">
+							<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+								Cancelar
+							</button>
+							<button type="button" class="btn btn-primary" id="btnExportRelatorio">
+								<i class="bi bi-download"></i> Exportar
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		`;
+
+		document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+		// Configura eventos
+		const modalElement = document.getElementById('relatorioModal');
+		const exportTypeRadios = document.querySelectorAll('input[name="exportType"]');
+		const subtreeOptions = document.getElementById('subtreeOptions');
+		const btnExport = document.getElementById('btnExportRelatorio');
+
+		// Carrega lista de usuários para o select
+		this.carregarUsuariosParaRelatorio();
+
+		// Mostra/esconde opções baseado no tipo de exportação
+		exportTypeRadios.forEach(radio => {
+			radio.addEventListener('change', () => {
+				if (radio.value === 'subtree') {
+					subtreeOptions.classList.remove('d-none');
+				} else {
+					subtreeOptions.classList.add('d-none');
+				}
+			});
+		});
+
+		// Evento do botão exportar
+		btnExport.addEventListener('click', () => {
+			this.executarExportacao();
+		});
+
+		// Mostra o modal
+		const modal = new bootstrap.Modal(modalElement);
+		modal.show();
+
+		// Limpa quando o modal for fechado
+		modalElement.addEventListener('hidden.bs.modal', () => {
+			setTimeout(() => {
+				if (window.limparBackdropEModal) {
+					window.limparBackdropEModal();
+				}
+				if (modalElement && document.body.contains(modalElement)) {
+					modalElement.remove();
+				}
+			}, 300);
+		});
+	}
+
+	carregarUsuariosParaRelatorio() {
 		fetch("/api/usuarios")
 			.then(response => response.json())
 			.then(usuarios => {
-				const BOM = '\uFEFF';
-				let csv = BOM + 'Nome;Email;Telefone;Perfil;Status;Data de Criação\r\n';
+				const userSelect = document.getElementById('userSelect');
+				if (userSelect) {
+					// Ordena usuários por nome
+					usuarios.sort((a, b) => a.nome.localeCompare(b.nome));
 
-				usuarios.forEach(usuario => {
-					const nome = (usuario.nome || '').replace(/"/g, '""');
-					const email = (usuario.email || '').replace(/"/g, '""');
-					const telefone = (usuario.telefone || '').replace(/"/g, '""');
-					const perfil = (usuario.perfil || '').replace(/"/g, '""');
-					const status = usuario.ativo ? 'Ativo' : 'Inativo';
-					const dataCriacao = window.formatDate ? window.formatDate(usuario.dataCriacao) : usuario.dataCriacao;
+					usuarios.forEach(usuario => {
+						const option = document.createElement('option');
+						option.value = usuario.id;
 
-					csv += `"${nome}";"${email}";"${telefone}";"${perfil}";"${status}";"${dataCriacao}"\r\n`;
-				});
+						// Adiciona badge para indicar se é ADMIN
+						let badge = '';
+						if (usuario.perfil === 'ADMIN') {
+							badge = ' <span class="badge bg-danger">ADMIN</span>';
+						}
 
-				const blob = new Blob([csv], {
-					type: 'text/csv;charset=utf-8;'
-				});
+						option.textContent =
+							`${usuario.nome}${usuario.perfil === 'ADMIN' ? ' [ADMIN]' : ''} (${usuario.email})`;
 
-				const url = window.URL.createObjectURL(blob);
-				const a = document.createElement('a');
-				a.href = url;
-				a.download = `usuarios_${new Date().toISOString().split('T')[0]}.csv`;
-
-				document.body.appendChild(a);
-				a.click();
-				document.body.removeChild(a);
-				window.URL.revokeObjectURL(url);
-
-				console.log('✅ Relatório gerado com sucesso!');
-				this.mostrarMensagemSucesso('✅ Relatório gerado com sucesso!');
+						userSelect.appendChild(option);
+					});
+				}
 			})
 			.catch(err => {
-				console.error('❌ Erro ao gerar relatório:', err);
-				this.mostrarMensagemErro('❌ Erro ao gerar relatório: ' + err.message);
+				console.error('❌ Erro ao carregar usuários:', err);
+				const userSelect = document.getElementById('userSelect');
+				if (userSelect) {
+					const option = document.createElement('option');
+					option.value = "";
+					option.textContent = "Erro ao carregar usuários";
+					option.disabled = true;
+					userSelect.appendChild(option);
+				}
 			});
 	}
-}
 
+	async executarExportacao() {
+		const exportType = document.querySelector('input[name="exportType"]:checked').value;
+		const format = document.querySelector('input[name="exportFormat"]:checked').value;
+		const userId = exportType === 'subtree' ? document.getElementById('userSelect').value : null;
+
+		// Validação
+		if (exportType === 'subtree' && !userId) {
+			alert('❌ Por favor, selecione um usuário para exportar a hierarquia.');
+			return;
+		}
+
+		const btnExport = document.getElementById('btnExportRelatorio');
+		const originalText = btnExport.innerHTML;
+		btnExport.disabled = true;
+		btnExport.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Exportando...';
+
+		try {
+			let usuarios = [];
+
+			if (exportType === 'all') {
+				// Exportar todos os usuários
+				usuarios = await this.buscarTodosUsuarios();
+			} else {
+				// Exportar hierarquia específica
+				usuarios = await this.buscarHierarquiaUsuario(userId);
+			}
+
+			// Gera o arquivo no formato selecionado
+			if (format === 'csv') {
+				this.gerarCSV(usuarios, exportType, userId);
+			} else {
+				this.gerarJSON(usuarios, exportType, userId);
+			}
+
+			// Fecha o modal
+			const modalElement = document.getElementById('relatorioModal');
+			if (modalElement) {
+				const modal = bootstrap.Modal.getInstance(modalElement);
+				if (modal) modal.hide();
+			}
+
+			this.mostrarMensagemSucesso(`✅ Relatório exportado com sucesso! (${usuarios.length} usuários)`);
+
+		} catch (error) {
+			console.error('❌ Erro ao exportar:', error);
+			this.mostrarMensagemErro('❌ Erro ao exportar: ' + error.message);
+		} finally {
+			btnExport.disabled = false;
+			btnExport.innerHTML = originalText;
+		}
+	}
+
+	async buscarTodosUsuarios() {
+		const response = await fetch("/api/usuarios");
+		if (!response.ok) throw new Error('Erro ao buscar usuários');
+		return await response.json();
+	}
+	async buscarHierarquiaUsuario(userId) {
+		// 1) Busca o usuário base completo
+		const baseResp = await fetch(`/api/usuarios/${userId}`);
+		if (!baseResp.ok) throw new Error('Erro ao buscar usuário base da hierarquia');
+		const base = await baseResp.json();
+
+		// 2) Busca a lista de descendentes (pode vir “resumida”)
+		const filhosResp = await fetch(`/api/usuarios/${userId}/hierarquia`);
+		if (!filhosResp.ok) throw new Error('Erro ao buscar hierarquia do usuário');
+		const descendentes = await filhosResp.json();
+
+		// Junta tudo (base + descendentes)
+		const lista = [base, ...(descendentes || [])];
+
+		// 3) ENRIQUECE: garante que cada item tem os detalhes completos (telefone, pai, datas, etc)
+		const cache = new Map();
+		const detalhados = [];
+
+		for (const u of lista) {
+			const id = u?.id;
+			if (!id) continue;
+
+			if (cache.has(id)) {
+				detalhados.push(cache.get(id));
+				continue;
+			}
+
+			const full = await this.buscarUsuarioDetalhado(id);
+			cache.set(id, full);
+			detalhados.push(full);
+		}
+
+		return detalhados;
+	}
+
+	async buscarUsuarioDetalhado(id) {
+		const r = await fetch(`/api/usuarios/${id}`);
+		if (!r.ok) {
+			// se falhar, retorna pelo menos algo para não quebrar export
+			return { id };
+		}
+		return await r.json();
+	}
+
+
+
+	// ============================================
+	// EXPORTAÇÃO (CSV / JSON)
+	// ============================================
+
+	downloadArquivo(conteudo, nomeArquivo, mimeType) {
+		const blob = new Blob([conteudo], { type: mimeType });
+		const url = URL.createObjectURL(blob);
+
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = nomeArquivo;
+		document.body.appendChild(a);
+		a.click();
+
+		a.remove();
+		URL.revokeObjectURL(url);
+	}
+
+	escapeCSV(valor) {
+		if (valor === null || valor === undefined) return '';
+		const str = String(valor);
+
+		// Se tem vírgula, aspas ou quebra de linha, precisa aspas e escapar aspas
+		if (/[",\n\r;]/.test(str)) {
+			return `"${str.replace(/"/g, '""')}"`;
+		}
+		return str;
+	}
+
+	gerarCSV(usuarios, exportType, userId) {
+		const agora = new Date();
+		const tsArquivo = agora.toISOString().slice(0, 19).replace(/[:T]/g, '-');
+
+		const nomeArquivo =
+			exportType === 'all'
+				? `usuarios-${tsArquivo}.csv`
+				: `usuarios-hierarquia-${userId}-${tsArquivo}.csv`;
+
+		// Helpers
+		const formatBR = (iso) => {
+			if (!iso) return '';
+			const d = new Date(iso);
+			if (isNaN(d.getTime())) return String(iso);
+			return d.toLocaleString('pt-BR');
+		};
+
+		const getPaiId = (u) => u?.usuarioPaiId ?? u?.usuarioPai?.id ?? '';
+		const getTelefone = (u) => u?.telefone ?? u?.fone ?? u?.celular ?? '';
+
+		// Para calcular nome do pai e nível, montamos um mapa
+		const map = new Map();
+		(usuarios || []).forEach(u => {
+			if (u?.id != null) map.set(String(u.id), u);
+		});
+
+		const getPaiNome = (u) => {
+			const pid = getPaiId(u);
+			if (!pid) return '';
+			const pai = map.get(String(pid));
+			return pai?.nome ?? '';
+		};
+
+		// Nível: conta quantos pais até o topo e SOMA +1 (pra bater com seu exemplo: Admin = Nível 2)
+		const calcNivel = (u) => {
+			let depth = 1; // ele mesmo
+			let pid = getPaiId(u);
+
+			// trava anti-loop
+			const seen = new Set([String(u?.id)]);
+
+			while (pid) {
+				const spid = String(pid);
+				if (seen.has(spid)) break;
+				seen.add(spid);
+
+				depth++;
+				const pai = map.get(spid);
+				pid = pai ? getPaiId(pai) : ''; // se pai não estiver na lista, para
+			}
+			return `Nível ${depth + 1}`;
+		};
+
+		// Monta CSV no formato “bonito”
+		const linhas = [];
+		linhas.push(`Tipo de Exportação: ${exportType === 'all' ? 'Todos os usuários' : 'Hierarquia específica'}`);
+		linhas.push(`Data da Exportação: ${agora.toLocaleString('pt-BR')}`);
+		linhas.push(`Total de Registros: ${(usuarios || []).length}`);
+		linhas.push(''); // linha em branco
+
+		const colunas = [
+			'ID',
+			'Nome',
+			'Email',
+			'Telefone',
+			'Perfil',
+			'Status',
+			'Usuário Pai ID',
+			'Usuário Pai Nome',
+			'Data de Criação',
+			'Nível Hierárquico'
+		];
+
+		linhas.push(colunas.join(';'));
+
+		for (const u of (usuarios || [])) {
+			const row = [
+				u?.id ?? '',
+				u?.nome ?? '',
+				u?.email ?? '',
+				getTelefone(u),
+				u?.perfil ?? '',
+				(u?.ativo ? 'Ativo' : 'Inativo'),
+				getPaiId(u),
+				getPaiNome(u),
+				formatBR(u?.dataCriacao),
+				calcNivel(u)
+			].map(v => this.escapeCSV(v));
+
+			linhas.push(row.join(';'));
+		}
+
+		const csv = linhas.join('\n');
+		this.downloadArquivo(csv, nomeArquivo, 'text/csv;charset=utf-8;');
+	}
+}
 // ============================================
 // INICIALIZAÇÃO DO MANAGER
 // ============================================

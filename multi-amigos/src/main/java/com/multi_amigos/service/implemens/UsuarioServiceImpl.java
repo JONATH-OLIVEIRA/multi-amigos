@@ -272,19 +272,18 @@ public class UsuarioServiceImpl implements UsuarioService {
 	@Override
 	@Transactional(readOnly = true)
 	public List<UsuarioDTO> listarTodos() {
-		// Use o método otimizado
-		List<Usuario> usuarios = usuarioRepository.findAllComHierarquiaCompleta();
+		// 🔥 OTIMIZADO: Use o novo método que carrega toda hierarquia
+		List<Usuario> usuarios = usuarioRepository.findAllComHierarquia(); // ← MUDOU AQUI
 		return usuarios.stream().map(UsuarioMapper::toDTO).collect(Collectors.toList());
 	}
 
 	@Override
 	@Transactional(readOnly = true)
 	public List<UsuarioDTO> listarTodosAtivos(String nome, Boolean ativo) {
-		// 1. Busca todos com a hierarquia otimizada que você já tem
-		List<Usuario> usuarios = usuarioRepository.findAllComHierarquiaCompleta();
+		// 🔥 OTIMIZADO: Use o novo método para ativos com hierarquia
+		List<Usuario> usuarios = usuarioRepository.findAllAtivosComHierarquia(); // ← MUDOU AQUI
 
-		// 2. Aplica os filtros via Stream (mais rápido que mudar todas as queries do
-		// Repository agora)
+		// Aplica os filtros via Stream
 		return usuarios.stream()
 				.filter(u -> (nome == null || nome.isBlank() || u.getNome().toLowerCase().contains(nome.toLowerCase())))
 				.filter(u -> (ativo == null || u.isAtivo() == ativo)).map(UsuarioMapper::toDTO)
@@ -294,8 +293,11 @@ public class UsuarioServiceImpl implements UsuarioService {
 	@Override
 	@Transactional(readOnly = true)
 	public List<UsuarioDTO> listarAtivos() {
-		// Use o método com EntityGraph
-		return usuarioRepository.findAllAtivosComPai().stream().map(UsuarioMapper::toDTO).collect(Collectors.toList());
+		// 🔥 OTIMIZADO: Use o novo método otimizado
+		return usuarioRepository.findAllAtivosComHierarquia() // ← MUDOU AQUI
+				.stream()
+				.map(UsuarioMapper::toDTO)
+				.collect(Collectors.toList());
 	}
 
 	@Override
@@ -308,7 +310,7 @@ public class UsuarioServiceImpl implements UsuarioService {
 			throw new ValidacaoException("Perfil inválido: " + perfil);
 		}
 
-		// Use o método com EntityGraph
+		// Use o método existente (não precisa de otimização específica)
 		return usuarioRepository.findByPerfilComPai(perfilEnum).stream().map(UsuarioMapper::toDTO)
 				.collect(Collectors.toList());
 	}
@@ -342,8 +344,8 @@ public class UsuarioServiceImpl implements UsuarioService {
 	public List<UsuarioDTO> listarComFiltros(String nome, String email, String perfil, Boolean ativo,
 			LocalDate dataInicio, LocalDate dataFim) {
 
-		// Busca todos os usuários
-		List<Usuario> usuarios = usuarioRepository.findAllComHierarquiaCompleta();
+		// 🔥 OTIMIZADO: Use o método que carrega toda hierarquia
+		List<Usuario> usuarios = usuarioRepository.findAllComHierarquia(); // ← MUDOU AQUI
 
 		// Aplica filtros via stream
 		return usuarios.stream()

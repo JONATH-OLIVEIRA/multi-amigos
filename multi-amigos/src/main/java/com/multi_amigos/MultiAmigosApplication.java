@@ -8,6 +8,6 @@ public class MultiAmigosApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(MultiAmigosApplication.class, args);
-	}
 
+	}
 }

@@ -5,6 +5,7 @@ class AdminDashboard {
         this.jwtToken = null;
         this.currentSection = 'dashboard';
         this.initialized = false;
+        this.isLoggingOut = false; // 🔥 Flag para evitar logout duplo
     }
 
     init() {
@@ -16,18 +17,17 @@ class AdminDashboard {
         console.log('=== DASHBOARD INICIALIZADO ===');
         
         // 1. Configura verificação de token
-        this.setupTokenVerification();
+        if (!this.setupTokenVerification()) {
+            return; // Se não tem token, já redirecionou para login
+        }
         
-        // 2. Configura interceptor global
-        this.setupFetchInterceptor();
-        
-        // 3. Configura eventos da interface
+        // 2. Configura eventos da interface (interceptor já está no apoio.js)
         this.setupInterfaceEvents();
         
-        // 4. Verificação de conexão com API
+        // 3. Verificação de conexão com API
         this.testAPIConnection();
         
-        // 5. Inicialização padrão
+        // 4. Inicialização padrão
         this.loadDefaultSection();
         
         this.initialized = true;
@@ -89,68 +89,42 @@ class AdminDashboard {
         return true;
     }
 
-    setupFetchInterceptor() {
-        console.log('📤 Configurando interceptor fetch...');
-        
-        const originalFetch = window.fetch;
-        const token = this.jwtToken;
-        
-        window.fetch = function(resource, options = {}) {
-            const newOptions = { ...options };
-            newOptions.headers = { ...newOptions.headers };
-            
-            const url = typeof resource === 'string' ? resource : resource.url;
-            const method = (newOptions.method || 'GET').toUpperCase();
-            
-            // Adiciona JWT token para TODAS as requisições
-            newOptions.headers['Authorization'] = `Bearer ${token}`;
-            
-            // Configura JSON para métodos que modificam dados
-            const modifyingMethods = ['POST', 'PUT', 'PATCH', 'DELETE'];
-            if (modifyingMethods.includes(method)) {
-                if (newOptions.body && typeof newOptions.body === 'object' && 
-                    !(newOptions.body instanceof FormData)) {
-                    newOptions.headers['Content-Type'] = 'application/json';
-                    newOptions.body = JSON.stringify(newOptions.body);
-                }
-            }
-            
-            console.log(`📤 Fetch: ${method} ${url}`);
-            return originalFetch.call(this, resource, newOptions);
-        };
-        
-        console.log('✅ Interceptor configurado');
-    }
-
     setupInterfaceEvents() {
         console.log('🎛️ Configurando eventos da interface...');
         
-        // Logout
+        // 🔥 LOGOUT APENAS AQUI - Sistema centralizado
         const logoutBtn = document.getElementById('logoutBtn');
         if (logoutBtn) {
-            logoutBtn.addEventListener('click', () => this.handleLogout());
+            // Remove qualquer listener existente
+            const newLogoutBtn = logoutBtn.cloneNode(true);
+            logoutBtn.parentNode.replaceChild(newLogoutBtn, logoutBtn);
+            
+            // Adiciona nosso listener
+            newLogoutBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.handleLogout();
+            });
+            
+            console.log('✅ Botão logout configurado');
         }
         
         // Menu de Navegação
         this.setupMenuNavigation();
     }
-
-    handleLogout() {
-        console.log('🚪 Efetuando logout...');
-        
-        if (confirm('Tem certeza que deseja sair?')) {
-            // Limpa TODOS os storages
-            localStorage.removeItem('token');
-            sessionStorage.clear();
+   
+    clearAuthCookies() {
+        const cookies = document.cookie.split(';');
+        cookies.forEach(cookie => {
+            const eqPos = cookie.indexOf('=');
+            const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
             
-            // Limpa cookies também se estiver usando
-            document.cookie.split(";").forEach(c => {
-                document.cookie = c.replace(/^ +/, "")
-                    .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-            });
-            
-            window.location.href = '/auth/login';
-        }
+            // Remove cookies relacionados a autenticação
+            if (name.includes('token') || name.includes('jwt') || name.includes('auth') || 
+                name.includes('session') || name === 'JSESSIONID') {
+                document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+                console.log(`🍪 Cookie removido: ${name}`);
+            }
+        });
     }
 
     setupMenuNavigation() {
@@ -277,13 +251,59 @@ class AdminDashboard {
                             <h4 class="mb-0"><i class="bi bi-people"></i> Gerenciamento de Usuários</h4>
                         </div>
                         <div class="card-body">
-                            <p>Conteúdo de gerenciamento de usuários será carregado aqui...</p>
-                            <p>Implemente esta seção usando admin-usuarios.js</p>
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle"></i> 
+                                Carregando usuários do sistema...
+                            </div>
+                            <div id="usuarios-content"></div>
                         </div>
                     </div>
                 </div>
             </div>
         `;
+        
+        // Se o manager de usuários estiver disponível, use-o
+        setTimeout(() => {
+            if (window.usuariosManager && typeof window.usuariosManager.loadUsuariosData === 'function') {
+                window.usuariosManager.loadUsuariosData();
+            } else {
+                this.loadFallbackUsuarios();
+            }
+        }, 300);
+    }
+    
+    loadFallbackUsuarios() {
+        const usuariosContent = document.getElementById('usuarios-content');
+        if (!usuariosContent) return;
+        
+        fetch('/api/usuarios')
+            .then(response => response.json())
+            .then(usuarios => {
+                let html = `<p>Total de usuários: ${usuarios.length}</p>`;
+                html += '<ul class="list-group">';
+                
+                usuarios.slice(0, 10).forEach(user => {
+                    html += `
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            ${user.nome}
+                            <span class="badge ${user.ativo ? 'bg-success' : 'bg-secondary'}">
+                                ${user.ativo ? 'Ativo' : 'Inativo'}
+                            </span>
+                        </li>
+                    `;
+                });
+                
+                html += '</ul>';
+                usuariosContent.innerHTML = html;
+            })
+            .catch(error => {
+                usuariosContent.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Erro ao carregar usuários: ${error.message}
+                    </div>
+                `;
+            });
     }
 
     loadHierarquia() {
@@ -298,7 +318,7 @@ class AdminDashboard {
         
         // Inicializa a hierarquia
         setTimeout(() => {
-            if (typeof hierarquia !== 'undefined') {
+            if (typeof hierarquia !== 'undefined' && typeof hierarquia.init === 'function') {
                 hierarquia.init('hierarquiaContainer');
             } else {
                 console.error('❌ Hierarquia não carregada. Verifique se admin-hierarquia.js está incluído.');
@@ -322,13 +342,41 @@ class AdminDashboard {
                             <h4 class="mb-0"><i class="bi bi-megaphone"></i> Mensagens do Sistema</h4>
                         </div>
                         <div class="card-body">
-                            <p>Conteúdo de mensagens será carregado aqui...</p>
-                            <p>Implemente esta seção usando admin-mensagens.js</p>
+                            <div id="mensagens-content"></div>
                         </div>
                     </div>
                 </div>
             </div>
         `;
+        
+        // Se o manager de mensagens estiver disponível, use-o
+        setTimeout(() => {
+            if (window.mensagensManager && typeof window.mensagensManager.loadMensagensData === 'function') {
+                window.mensagensManager.loadMensagensData();
+            } else {
+                this.loadFallbackMensagens();
+            }
+        }, 300);
+    }
+    
+    loadFallbackMensagens() {
+        const mensagensContent = document.getElementById('mensagens-content');
+        if (!mensagensContent) return;
+        
+        fetch('/api/mensagens/todas')
+            .then(response => response.json())
+            .then(mensagens => {
+                let html = `<p>Total de mensagens: ${mensagens.length}</p>`;
+                mensagensContent.innerHTML = html;
+            })
+            .catch(error => {
+                mensagensContent.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Erro ao carregar mensagens: ${error.message}
+                    </div>
+                `;
+            });
     }
 
     loadDashboard() {
@@ -341,8 +389,41 @@ class AdminDashboard {
                             <h4 class="mb-0"><i class="bi bi-speedometer2"></i> Dashboard Administrativo</h4>
                         </div>
                         <div class="card-body">
-                            <p>Conteúdo do dashboard será carregado aqui...</p>
-                            <p>Implemente esta seção usando admin-dashboard.js</p>
+                            <p>Dashboard do sistema MultiAmigos</p>
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="card text-white bg-primary mb-3">
+                                        <div class="card-body">
+                                            <h5 class="card-title">Usuários</h5>
+                                            <p class="card-text">Gerenciar todos os usuários</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card text-white bg-info mb-3">
+                                        <div class="card-body">
+                                            <h5 class="card-title">Hierarquia</h5>
+                                            <p class="card-text">Visualizar estrutura da rede</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card text-white bg-warning mb-3">
+                                        <div class="card-body">
+                                            <h5 class="card-title">Mensagens</h5>
+                                            <p class="card-text">Gerenciar mensagens do sistema</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card text-white bg-secondary mb-3">
+                                        <div class="card-body">
+                                            <h5 class="card-title">Busca</h5>
+                                            <p class="card-text">Busca avançada de usuários</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
