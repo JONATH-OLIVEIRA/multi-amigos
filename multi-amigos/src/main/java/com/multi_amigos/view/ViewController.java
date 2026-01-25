@@ -1,7 +1,6 @@
 package com.multi_amigos.view;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -155,4 +154,16 @@ public class ViewController {
 
 		return "cadastro-por-link";
 	}
+	
+	@GetMapping("/auth/resetar-senha")
+	public String resetarSenhaPage(@RequestParam("token") String token, Model model) {
+	    model.addAttribute("token", token);
+	    return "auth/resetar-senha";
+	}
+	@GetMapping("/auth/forgot")
+	public String forgotPage() {
+	    return "auth/forgot";
+	}
+
+
 }

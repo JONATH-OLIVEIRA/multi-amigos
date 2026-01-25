@@ -60,29 +60,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
 	@Override
 	protected boolean shouldNotFilter(HttpServletRequest request) {
-		String path = request.getRequestURI();
+		String path = request.getServletPath();
 
-		return path.startsWith("/auth/") 
-				|| path.equals("/auth/validate")
-	            || path.equals("/") 
-	            || path.equals("/index.html")
-	            || path.equals("/login.html")
-	            || path.startsWith("/public/")
-	            || path.startsWith("/css/") 
-	            || path.startsWith("/js/")
-	            || path.startsWith("/images/")
-	            || path.endsWith(".ico")
-	            || path.endsWith(".css")
-	            || path.endsWith(".js")
-	            || path.endsWith(".png")
-	            || path.endsWith(".jpg")
-	            || path.endsWith(".jpeg")
-	            || path.endsWith(".gif")
-	            || path.startsWith("/webjars/") 
-	            || path.startsWith("/swagger-ui/")
-	            || path.startsWith("/swagger-ui/")
-	            || path.startsWith("/v3/api-docs/");
+	    // JWT só para /api/**
+	    if (!path.startsWith("/api/")) {
+	        return true;
+	    }
+
+	    // APIs públicas (não precisam JWT)
+	    return path.equals("/api/auth/forgot")
+	        || path.equals("/api/auth/reset")
+	        || path.equals("/api/usuarios/cadastro-publico")
+	        || path.startsWith("/api/usuarios/cadastro-por-link/");
 	}
+
 
 	@Override
 	protected void doFilterInternal(

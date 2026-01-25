@@ -9,18 +9,27 @@ document.addEventListener("DOMContentLoaded", () => {
   const isLoginPage = pathname === "/auth/login";
   const cadastroSuccess = params.get("cadastro") === "success";
   const hasAuthError = params.has("error"); // expired / denied / etc
+  const resetSuccess = params.get("reset") === "success";
+
+  // ✅ Mensagem de sucesso do reset
+  if (isLoginPage && resetSuccess) {
+    const box = document.getElementById("loginMsg");
+    if (box) {
+      box.innerHTML = `<div class="alert alert-success">Senha redefinida com sucesso. Faça login.</div>`;
+    }
+  }
 
   // ✅ Regra: se veio de cadastro=success ou error=..., NÃO auto-redireciona.
   // (E opcionalmente limpa token para não “voltar pro pai”)
-  if (isLoginPage && (cadastroSuccess || hasAuthError)) {
-    console.log("ℹ️ Login page com flag (cadastro/error). Não fará auto-redirect.");
+  if (isLoginPage && (cadastroSuccess || hasAuthError || resetSuccess)) {
+    console.log("ℹ️ Login page com flag (cadastro/error/reset). Não fará auto-redirect.");
     localStorage.removeItem("token");
     localStorage.removeItem("perfil");
   } else {
     // ✅ Auto-redirect somente se:
     // - está na página de login
     // - tem token
-    // - NÃO tem flags cadastro/error
+    // - NÃO tem flags cadastro/error/reset
     if (token && isLoginPage) {
       console.log("🔄 Usuário já logado, validando token...");
 
@@ -38,8 +47,6 @@ document.addEventListener("DOMContentLoaded", () => {
             userData.role === "ADMIN" ? "/admin/dashboard" : "/usuario/dashboard";
 
           console.log(`📍 Redirecionando para: ${dashboardUrl}`);
-
-          // ✅ NAVEGAÇÃO NORMAL (evita loop e warning do document.write)
           window.location.replace(dashboardUrl);
         })
         .catch((err) => {
@@ -92,19 +99,12 @@ document.addEventListener("DOMContentLoaded", () => {
         const newToken = data.token;
         const perfil = data.perfil;
 
-        console.log("✅ Login bem-sucedido!");
-        console.log("📊 Dados recebidos:", data);
-        console.log("🎭 Perfil detectado:", perfil);
-
         localStorage.setItem("token", newToken);
         localStorage.setItem("perfil", perfil);
 
         const dashboardUrl =
           perfil === "ADMIN" ? "/admin/dashboard" : "/usuario/dashboard";
 
-        console.log(`🚀 Indo para: ${dashboardUrl}`);
-
-        // ✅ NAVEGAÇÃO NORMAL (sem fetch + document.write)
         window.location.replace(dashboardUrl);
       } catch (err) {
         console.error("❌ Erro no login:", err);
@@ -149,15 +149,12 @@ async function goToDashboard() {
       headers: { Authorization: `Bearer ${token}` },
     });
 
-    if (!validateRes.ok) {
-      throw new Error("Token inválido ou expirado");
-    }
+    if (!validateRes.ok) throw new Error("Token inválido ou expirado");
 
     const userData = await validateRes.json();
     const dashboardUrl =
       userData.role === "ADMIN" ? "/admin/dashboard" : "/usuario/dashboard";
 
-    console.log(`📍 Indo para dashboard: ${dashboardUrl}`);
     window.location.replace(dashboardUrl);
   } catch (err) {
     console.error("❌ Erro ao ir para dashboard:", err);

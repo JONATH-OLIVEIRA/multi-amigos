@@ -5,6 +5,7 @@ import java.util.Arrays;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -31,6 +32,8 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
+
+        // Obs: em produção, troque "*" pelo(s) domínio(s) do front.
         config.setAllowedOrigins(Arrays.asList("*"));
         config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         config.setAllowedHeaders(Arrays.asList("*"));
@@ -49,6 +52,7 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
+            // ✅ Mantém comportamento: API retorna JSON; páginas redirecionam
             .exceptionHandling(exception -> exception
                 .authenticationEntryPoint((request, response, authException) -> {
                     String uri = request.getRequestURI();
@@ -67,7 +71,7 @@ public class SecurityConfig {
                         return;
                     }
 
-                    // 3) Páginas: redireciona pro login (se realmente precisar)
+                    // 3) Páginas: redireciona pro login
                     response.sendRedirect("/auth/login?error=expired");
                 })
                 .accessDeniedHandler((request, response, accessDeniedException) -> {
@@ -86,15 +90,18 @@ public class SecurityConfig {
                 // ==================== 🔓 PÚBLICO (PÁGINAS E RECURSOS) ====================
                 .requestMatchers(
                     "/", "/home",
+
+                    // ✅ Libera tudo de /auth/** (inclui /auth/validate)
                     "/auth/**",
+
+                    // Estáticos
                     "/css/**", "/js/**", "/images/**", "/favicon.ico", "/webjars/**",
+
+                    // Cadastro público (página)
                     "/cadastro", "/cadastro/**",
 
-                    // ✅ IMPORTANTE: libera as páginas do admin para não cair no login no refresh
-                    // (a segurança real fica nas APIs /api/**)
-                    "/admin/**",
-                    "/usuario/**",
-                    "/dashboard/**"
+                    // ✅ Páginas HTML liberadas (JS controla a navegação, APIs protegem de verdade)
+                    "/admin/**", "/usuario/**", "/dashboard/**"
                 ).permitAll()
 
                 // Swagger
@@ -104,19 +111,27 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
                 // ==================== 🔓 APIs PÚBLICAS ESPECÍFICAS ====================
+                // Cadastro
                 .requestMatchers(HttpMethod.POST,
                     "/api/usuarios/cadastro-publico",
                     "/api/usuarios/cadastro-por-link/**"
                 ).permitAll()
 
-                // ==================== 🌐 APIs PROTEGIDAS ====================
-                // Tudo que é /api/ precisa de token
+                // Esqueci a senha / reset (ajuste os métodos se seu controller usar GET também)
+                .requestMatchers(HttpMethod.POST,
+                    "/api/auth/forgot",
+                    "/api/auth/reset"
+                ).permitAll()
+
+                // ==================== 🔐 APIs PROTEGIDAS ====================
+                // Tudo que é /api/ precisa de token, exceto as permitAll acima
                 .requestMatchers("/api/**").authenticated()
 
                 // Qualquer outra requisição (se existir)
                 .anyRequest().permitAll()
             )
 
+            // 🔥 JWT filter antes do auth padrão
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
