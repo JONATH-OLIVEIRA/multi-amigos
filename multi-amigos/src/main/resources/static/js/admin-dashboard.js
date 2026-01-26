@@ -847,3 +847,42 @@ document.addEventListener("DOMContentLoaded", function() {
 
 	console.log('✅ Dashboard inicializado com sucesso');
 });
+
+// ===================================================
+// ✅ MOBILE SIDEBAR (DRAWER) - SEM MEXER NA LÓGICA
+// ===================================================
+document.addEventListener("DOMContentLoaded", () => {
+  const toggleBtn = document.getElementById("toggleSidebarBtn");
+  const overlay = document.getElementById("sidebarOverlay");
+
+  function openSidebar() {
+    document.body.classList.add("sidebar-open");
+  }
+
+  function closeSidebar() {
+    document.body.classList.remove("sidebar-open");
+  }
+
+  toggleBtn?.addEventListener("click", () => {
+    document.body.classList.toggle("sidebar-open");
+  });
+
+  overlay?.addEventListener("click", closeSidebar);
+
+  // Fecha menu ao clicar em qualquer link (no mobile)
+  document.querySelectorAll(".sidebar .nav-link").forEach((link) => {
+    link.addEventListener("click", () => {
+      if (window.innerWidth < 992) closeSidebar();
+    });
+  });
+
+  // Ao redimensionar para desktop, garante menu fechado
+  window.addEventListener("resize", () => {
+    if (window.innerWidth >= 992) closeSidebar();
+  });
+
+  // ESC fecha também (boa UX)
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeSidebar();
+  });
+});

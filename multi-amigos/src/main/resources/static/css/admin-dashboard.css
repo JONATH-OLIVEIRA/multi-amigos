@@ -24,6 +24,7 @@ body {
     margin: 0;
     min-height: 100vh;
     color: var(--dark);
+    overflow-x: hidden; /* 🔥 evita scroll lateral */
 }
 
 /* =========================
@@ -257,37 +258,6 @@ header .badge {
     color: var(--text-muted);
 }
 
-/* =========================
-   RESPONSIVO
-========================= */
-@media (max-width: 768px) {
-    .sidebar {
-        width: 70px;
-    }
-
-    .sidebar .nav-link span {
-        display: none;
-    }
-
-    .sidebar .nav-link i {
-        margin-right: 0;
-        font-size: 1.2rem;
-    }
-
-    .sidebar-header h5 {
-        display: none;
-    }
-
-    .sidebar-footer small {
-        font-size: 0.7rem;
-        opacity: 0.9;
-    }
-
-    main {
-        padding: 12px !important;
-    }
-}
-
 /* ======================================
    FIX DEFINITIVO HEADER (SEM HTML)
 ====================================== */
@@ -345,20 +315,6 @@ header.bg-dark span {
     font-weight: 500;
 }
 
-/* ======================================
-   MOBILE FIX
-====================================== */
-@media (max-width: 768px) {
-    header.bg-dark small {
-        font-size: 0.75rem;
-    }
-
-    header.bg-dark .badge {
-        font-size: 0.65rem;
-        padding: 3px 6px;
-    }
-}
-
 /* =========================
    AJUSTE BOTÕES MODAL (EVITAR SOBREPOSIÇÃO)
 ========================= */
@@ -379,315 +335,6 @@ header.bg-dark span {
     }
 }
 
-/* =========================
-   HIERARQUIA STYLES - CORRIGIDO
-========================= */
-.hierarchy-container {
-    padding: 0.5rem;
-}
-
-.hierarchy-current-user {
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    border-radius: 12px;
-    padding: 1.5rem;
-    text-align: center;
-    border: 1px solid #dee2e6;
-    margin-bottom: 1.5rem;
-}
-
-.hierarchy-current-user i.bi-person-circle {
-    font-size: 4rem;
-    display: block;
-    margin: 0 auto 1rem;
-}
-
-.hierarchy-current-user h5 {
-    color: #343a40;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-}
-
-.hierarchy-current-user .badge {
-    font-size: 0.9rem;
-    padding: 0.4em 0.8em;
-    margin: 0 0.2rem;
-}
-
-/* Container das colunas */
-.hierarchy-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-}
-
-/* Cartões de superior e subordinados */
-.hierarchy-card {
-    flex: 1 1 calc(50% - 0.5rem);
-    min-width: 300px;
-    border: 1px solid #dee2e6;
-    border-radius: 10px;
-    overflow: hidden;
-    background: white;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    transition: transform 0.2s, box-shadow 0.2s;
-    display: flex;
-    flex-direction: column;
-}
-
-.hierarchy-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-}
-
-.hierarchy-card .card-header {
-    padding: 1rem 1.25rem;
-    font-weight: 600;
-    border-bottom: 1px solid #dee2e6;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.hierarchy-card .card-header i {
-    font-size: 1.1rem;
-}
-
-.hierarchy-card .card-body {
-    flex: 1;
-    padding: 1.5rem;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    min-height: 200px;
-}
-
-/* Superior (coluna esquerda) */
-.hierarchy-card.border-primary .card-header {
-    background-color: rgba(13, 110, 253, 0.1);
-    color: #0d6efd;
-    border-color: rgba(13, 110, 253, 0.2);
-}
-
-/* Subordinados (coluna direita) */
-.hierarchy-card.border-success .card-header {
-    background-color: rgba(25, 135, 84, 0.1);
-    color: #198754;
-    border-color: rgba(25, 135, 84, 0.2);
-}
-
-/* Conteúdo vazio */
-.hierarchy-empty-state {
-    text-align: center;
-    color: #6c757d;
-    padding: 2rem 1rem;
-}
-
-.hierarchy-empty-state i {
-    font-size: 3rem;
-    opacity: 0.5;
-    margin-bottom: 1rem;
-    display: block;
-}
-
-.hierarchy-empty-state p {
-    margin: 0;
-    font-weight: 500;
-}
-
-.hierarchy-empty-state small {
-    font-size: 0.875rem;
-    opacity: 0.8;
-}
-
-/* Lista de subordinados */
-.hierarchy-list {
-    width: 100%;
-    max-height: 250px;
-    overflow-y: auto;
-    padding-right: 0.5rem;
-}
-
-.hierarchy-list .list-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.hierarchy-list .list-group-item {
-    padding: 0.75rem 1rem;
-    border: 1px solid #e9ecef;
-    border-radius: 8px;
-    background-color: #fff;
-    transition: background-color 0.2s;
-}
-
-.hierarchy-list .list-group-item:hover {
-    background-color: #f8f9fa;
-}
-
-.hierarchy-list .d-flex {
-    gap: 0.75rem;
-}
-
-.hierarchy-list .flex-shrink-0 i {
-    font-size: 1.5rem;
-}
-
-.hierarchy-list .flex-grow-1 h6 {
-    margin-bottom: 0.25rem;
-    font-weight: 600;
-}
-
-.hierarchy-list .flex-grow-1 small {
-    color: #6c757d;
-    font-size: 0.875rem;
-}
-
-/* Resumo */
-.hierarchy-summary {
-    background-color: #f8f9fa;
-    border-radius: 10px;
-    padding: 1.25rem;
-    margin-top: 1.5rem;
-    border: 1px solid #dee2e6;
-}
-
-.hierarchy-summary .row {
-    display: flex;
-    justify-content: space-around;
-    text-align: center;
-}
-
-.hierarchy-summary .col-md-4 {
-    padding: 0 1rem;
-}
-
-.hierarchy-summary .text-muted {
-    font-size: 0.875rem;
-    font-weight: 500;
-    margin-bottom: 0.5rem;
-    color: #6c757d !important;
-}
-
-.hierarchy-summary .fw-bold {
-    font-size: 1.5rem;
-    color: #343a40;
-    font-weight: 700;
-}
-
-/* Badges de status */
-.badge.bg-danger {
-    background-color: #dc3545 !important;
-}
-
-.badge.bg-primary {
-    background-color: #0d6efd !important;
-}
-
-.badge.bg-success {
-    background-color: #198754 !important;
-}
-
-.badge.bg-secondary {
-    background-color: #6c757d !important;
-}
-
-/* =========================
-   MODAL HIERARQUIA
-========================= */
-#hierarquiaModal .modal-dialog {
-    max-width: 900px !important;
-}
-
-#hierarquiaModal .modal-content {
-    border-radius: 12px;
-    overflow: hidden;
-}
-
-#hierarquiaModal .modal-header {
-    background-color: #f8f9fa;
-    border-bottom: 1px solid #dee2e6;
-    padding: 1rem 1.5rem;
-}
-
-#hierarquiaModal .modal-title {
-    font-weight: 600;
-    color: #343a40;
-}
-
-#hierarquiaModal .modal-body {
-    padding: 1.5rem;
-    max-height: 70vh;
-    overflow-y: auto;
-}
-
-#hierarquiaModal .modal-footer {
-    border-top: 1px solid #dee2e6;
-    padding: 1rem 1.5rem;
-}
-
-/* =========================
-   RESPONSIVIDADE
-========================= */
-@media (max-width: 768px) {
-    .hierarchy-card {
-        flex: 1 1 100%;
-    }
-    
-    .hierarchy-current-user {
-        padding: 1rem;
-    }
-    
-    .hierarchy-current-user i.bi-person-circle {
-        font-size: 3rem;
-    }
-    
-    .hierarchy-card .card-body {
-        padding: 1rem;
-        min-height: 150px;
-    }
-    
-    .hierarchy-summary .fw-bold {
-        font-size: 1.25rem;
-    }
-    
-    .hierarchy-summary .col-md-4 {
-        padding: 0.5rem;
-    }
-    
-    #hierarquiaModal .modal-dialog {
-        margin: 0.5rem;
-    }
-    
-    #hierarquiaModal .modal-body {
-        padding: 1rem;
-        max-height: 80vh;
-    }
-}
-
-/* =========================
-   SCROLLBAR PERSONALIZADO
-========================= */
-.hierarchy-list::-webkit-scrollbar {
-    width: 6px;
-}
-
-.hierarchy-list::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 3px;
-}
-
-.hierarchy-list::-webkit-scrollbar-thumb {
-    background: #c1c1c1;
-    border-radius: 3px;
-}
-
-.hierarchy-list::-webkit-scrollbar-thumb:hover {
-    background: #a8a8a8;
-}
-
 /* ====== Mensagens: header não quebrar botões ====== */
 .mensagem-card .card-header{
   gap: 10px;
@@ -706,8 +353,8 @@ header.bg-dark span {
   display: flex;
   align-items: center;
   gap: 6px;
-  white-space: nowrap;   /* 🔥 impede quebra */
-  flex-shrink: 0;        /* 🔥 não encolhe */
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* Botões quadradinhos e alinhados */
@@ -718,4 +365,96 @@ header.bg-dark span {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+/* =========================================================
+   ✅ RESPONSIVO NOVO (MOBILE): SIDEBAR DRAWER + OVERLAY
+   (mantém desktop igual e arruma celular)
+========================================================= */
+
+/* Overlay do menu (mobile) */
+.sidebar-overlay{
+  display: none;
+}
+
+/* Desktop: sidebar fixa e conteúdo com margin */
+@media (min-width: 992px){
+  .sidebar{
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 1030;
+  }
+
+  .main-content{
+    margin-left: 250px;
+  }
+}
+
+/* Mobile: sidebar vira drawer e body deixa de ser flex */
+@media (max-width: 991.98px){
+  body.d-flex{
+    display: block !important;
+  }
+
+  .main-content{
+    margin-left: 0 !important;
+  }
+
+  .sidebar{
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 1040;
+    width: 260px;
+    transform: translateX(-105%);
+    transition: transform 0.25s ease;
+    box-shadow: 10px 0 30px rgba(0,0,0,0.25);
+  }
+
+  /* Quando abrir */
+  body.sidebar-open .sidebar{
+    transform: translateX(0);
+  }
+
+  .sidebar-overlay{
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 1035;
+    background: rgba(0,0,0,0.45);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+
+  body.sidebar-open .sidebar-overlay{
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* Header: não deixar quebrar */
+  header .container-fluid{
+    gap: 12px;
+  }
+
+  #logoutBtn{
+    white-space: nowrap;
+  }
+
+  header.bg-dark small{
+    font-size: 0.75rem;
+  }
+
+  header.bg-dark .badge{
+    font-size: 0.65rem;
+    padding: 3px 6px;
+  }
+
+  main{
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
 }
