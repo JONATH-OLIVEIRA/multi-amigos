@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -39,7 +40,10 @@ import jakarta.validation.Valid;
 public class UsuarioController {
 
 	private final UsuarioService usuarioService;
-
+	
+	@Value("${app.base-url}")
+	private String baseUrl;
+	
 	public UsuarioController(UsuarioService usuarioService) {
 		this.usuarioService = usuarioService;
 	}
@@ -269,17 +273,18 @@ public class UsuarioController {
 	@GetMapping("/gerar-link-convite/{usuarioId}")
 	@PreAuthorize("hasRole('ADMIN')")
 	public ResponseEntity<Map<String, String>> gerarLinkConvite(@PathVariable Long usuarioId) {
-		// Verifica se o usuário existe
-		usuarioService.buscarPorId(usuarioId);
 
-		String linkConvite = "http://localhost:8080/cadastro?ref=" + usuarioId;
+	    usuarioService.buscarPorId(usuarioId);
 
-		Map<String, String> response = new HashMap<>();
-		response.put("link", linkConvite);
-		response.put("mensagem", "Compartilhe este link para convidar novas pessoas");
+	    String linkConvite = baseUrl + "/cadastro?ref=" + usuarioId;
 
-		return ResponseEntity.ok(response);
+	    Map<String, String> response = new HashMap<>();
+	    response.put("link", linkConvite);
+	    response.put("mensagem", "Compartilhe este link para convidar novas pessoas");
+
+	    return ResponseEntity.ok(response);
 	}
+
 
 	// ==========================
 	// Testar link de referência
