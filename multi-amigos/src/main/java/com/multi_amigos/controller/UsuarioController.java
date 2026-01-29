@@ -1,6 +1,7 @@
 package com.multi_amigos.controller;
 
 import java.time.LocalDate;
+import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
@@ -272,9 +273,18 @@ public class UsuarioController {
 	// ==========================
 	@GetMapping("/gerar-link-convite/{usuarioId}")
 	@PreAuthorize("hasRole('ADMIN')")
-	public ResponseEntity<Map<String, String>> gerarLinkConvite(@PathVariable Long usuarioId) {
+	public ResponseEntity<Map<String, String>> gerarLinkConvite(
+	        @PathVariable Long usuarioId,
+	        HttpServletRequest request) {
 
 	    usuarioService.buscarPorId(usuarioId);
+
+	    String baseUrl =
+	            request.getScheme() + "://" +
+	            request.getServerName() +
+	            ((request.getServerPort() == 80 || request.getServerPort() == 443)
+	                    ? ""
+	                    : ":" + request.getServerPort());
 
 	    String linkConvite = baseUrl + "/cadastro?ref=" + usuarioId;
 
@@ -284,7 +294,6 @@ public class UsuarioController {
 
 	    return ResponseEntity.ok(response);
 	}
-
 
 	// ==========================
 	// Testar link de referência
