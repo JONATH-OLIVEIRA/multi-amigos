@@ -228,7 +228,7 @@ function gerarLinkConvite() {
 }
 
 function gerarLink() {
-    fetch('/api/usuarios/me/link-convite')
+    fetch('/api/me/link-convite')
         .then(r => { if (!r.ok) throw new Error(`Erro ${r.status}`); return r.json(); })
         .then(data => {
             const container = document.getElementById('conviteContainer');
