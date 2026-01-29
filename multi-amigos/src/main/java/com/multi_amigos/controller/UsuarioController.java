@@ -272,7 +272,7 @@ public class UsuarioController {
 	// ==========================
 	// Gerar link de convite
 	// ==========================
-	@GetMapping("/gerar-link-convite/{usuarioId}")
+	@GetMapping("/me/link-convite")
 	@PreAuthorize("hasRole('ADMIN')")
 	public ResponseEntity<Map<String, String>> gerarLinkConvite(
 	        @PathVariable Long usuarioId,
