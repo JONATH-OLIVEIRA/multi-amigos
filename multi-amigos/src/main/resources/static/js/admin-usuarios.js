@@ -1,5 +1,6 @@
 // ============================================
 // USUARIOS MANAGER - GERENCIAMENTO DE USUÁRIOS
+// (mantendo tudo que funciona + melhorias de AUTH/ERROS)
 // ============================================
 
 class UsuariosManager {
@@ -10,6 +11,60 @@ class UsuariosManager {
 
 	initializeEventListeners() {
 		// Event listeners serão adicionados dinamicamente
+	}
+
+	// ============================================
+	// HTTP HELPERS (AUTH + JSON + ERROS) ✅ NOVO
+	// ============================================
+
+	getToken() {
+		return localStorage.getItem("token");
+	}
+
+	authHeaders(extra = {}) {
+		const token = this.getToken();
+		return {
+			'Accept': 'application/json',
+			...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+			...extra
+		};
+	}
+
+	async fetchJson(url, options = {}) {
+		const opts = { ...options };
+		opts.headers = this.authHeaders(opts.headers || {});
+
+		const res = await fetch(url, opts);
+
+		// 401: token inválido/expirado -> força login
+		if (res.status === 401) {
+			localStorage.removeItem("token");
+			window.location.href = "/auth/login";
+			throw new Error("Sessão expirada. Faça login novamente.");
+		}
+
+		const contentType = res.headers.get("content-type") || "";
+		const isJson = contentType.includes("application/json");
+
+		const body = isJson
+			? await res.json().catch(() => ({}))
+			: await res.text().catch(() => "");
+
+		if (!res.ok) {
+			// 403: permissão
+			if (res.status === 403) {
+				throw new Error("Acesso negado! Verifique suas permissões.");
+			}
+
+			// extrai mensagem do backend
+			let msg = "";
+			if (typeof body === "string") msg = body;
+			else if (body && typeof body === "object") msg = body.error || body.message || JSON.stringify(body);
+
+			throw new Error(`Erro ${res.status}: ${msg || res.statusText}`);
+		}
+
+		return body;
 	}
 
 	// ============================================
@@ -74,21 +129,7 @@ class UsuariosManager {
 
 		if (window.showLoading) window.showLoading();
 
-		fetch("/api/usuarios")
-			.then(response => {
-				if (response.status === 403) {
-					throw new Error("Acesso negado! Verifique suas permissões.");
-				}
-				if (response.status === 401) {
-					localStorage.removeItem("token");
-					window.location.href = "/auth/login";
-					return;
-				}
-				if (!response.ok) {
-					throw new Error(`Erro ${response.status}: ${response.statusText}`);
-				}
-				return response.json();
-			})
+		this.fetchJson("/api/usuarios")
 			.then(usuarios => {
 				console.log(`✅ ${usuarios.length} usuários carregados`);
 				if (window.hideLoading) window.hideLoading();
@@ -287,11 +328,7 @@ class UsuariosManager {
 	verDetalhesUsuario(userId) {
 		console.log(`📋 Buscando detalhes do usuário ${userId}...`);
 
-		fetch(`/api/usuarios/${userId}`)
-			.then(response => {
-				if (!response.ok) throw new Error(`Erro ${response.status}`);
-				return response.json();
-			})
+		this.fetchJson(`/api/usuarios/${userId}`)
 			.then(usuario => {
 				console.log('✅ Detalhes carregados:', usuario);
 
@@ -427,20 +464,12 @@ class UsuariosManager {
 	verHierarquia(userId) {
 		console.log('📊 Buscando hierarquia para ID:', userId);
 
-		fetch(`/api/usuarios/${userId}`)
-			.then(response => {
-				if (!response.ok) throw new Error(`Erro ${response.status}`);
-				return response.json();
-			})
+		this.fetchJson(`/api/usuarios/${userId}`)
 			.then(usuario => {
 				const paiId = usuario.usuarioPaiId || (usuario.usuarioPai ? usuario.usuarioPai.id : null);
 
 				const paiPromise = paiId ? this.buscarUsuario(paiId) : Promise.resolve(null);
-				const filhosPromise = fetch(`/api/usuarios/${userId}/hierarquia`)
-					.then(response => {
-						if (!response.ok) throw new Error(`Erro ${response.status}`);
-						return response.json();
-					});
+				const filhosPromise = this.fetchJson(`/api/usuarios/${userId}/hierarquia`);
 
 				return Promise.all([paiPromise, filhosPromise])
 					.then(([pai, filhos]) => {
@@ -454,11 +483,7 @@ class UsuariosManager {
 	}
 
 	buscarUsuario(userId) {
-		return fetch(`/api/usuarios/${userId}`)
-			.then(response => {
-				if (!response.ok) return null;
-				return response.json();
-			})
+		return this.fetchJson(`/api/usuarios/${userId}`)
 			.catch(() => null);
 	}
 
@@ -705,7 +730,7 @@ class UsuariosManager {
 
 		// ✅ aplica máscara no telefone
 		const telInput = document.getElementById('novoUsuarioTelefone');
-		window.aplicarMascaraTelefone(telInput);
+		if (window.aplicarMascaraTelefone) window.aplicarMascaraTelefone(telInput);
 
 		// Configura eventos
 		const modalElement = document.getElementById('novoUsuarioModal');
@@ -756,8 +781,7 @@ class UsuariosManager {
 	}
 
 	carregarUsuariosParaPaiNovo() {
-		fetch("/api/usuarios/ativos")
-			.then(response => response.json())
+		this.fetchJson("/api/usuarios/ativos")
 			.then(usuarios => {
 				const selectPai = document.getElementById('novoUsuarioPaiId');
 				if (selectPai) {
@@ -825,21 +849,13 @@ class UsuariosManager {
 
 		console.log('📤 Enviando dados:', dados);
 
-		fetch("/api/usuarios", {
+		this.fetchJson("/api/usuarios", {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json'
 			},
 			body: JSON.stringify(dados)
 		})
-			.then(response => {
-				if (!response.ok) {
-					return response.json().then(err => {
-						throw new Error(err.message || 'Erro ao cadastrar usuário');
-					});
-				}
-				return response.json();
-			})
 			.then(() => {
 				console.log('✅ Usuário cadastrado com sucesso!');
 				this.mostrarMensagemSucesso('✅ Usuário cadastrado com sucesso!');
@@ -854,6 +870,7 @@ class UsuariosManager {
 			})
 			.catch(err => {
 				console.error('❌ Erro:', err);
+				this.mostrarMensagemErro(err.message);
 				alert('❌ Erro: ' + err.message);
 			})
 			.finally(() => {
@@ -875,13 +892,7 @@ class UsuariosManager {
 			existingModal.remove();
 		}
 
-		fetch(`/api/usuarios/${userId}`)
-			.then(response => {
-				if (!response.ok) {
-					throw new Error(`Erro ${response.status} ao carregar usuário`);
-				}
-				return response.json();
-			})
+		this.fetchJson(`/api/usuarios/${userId}`)
 			.then(usuario => {
 				console.log('✅ Dados do usuário carregados:', usuario);
 
@@ -996,8 +1007,7 @@ class UsuariosManager {
 	}
 
 	carregarUsuariosParaPaiEdicao(usuarioAtualId) {
-		fetch("/api/usuarios/ativos")
-			.then(response => response.json())
+		this.fetchJson("/api/usuarios/ativos")
 			.then(usuarios => {
 				const selectPai = document.getElementById('editarUsuarioPaiId');
 				if (selectPai) {
@@ -1105,38 +1115,13 @@ class UsuariosManager {
 
 		console.log('🌐 Enviando requisição PUT para:', `/api/usuarios/${usuarioId}`);
 
-		fetch(`/api/usuarios/${usuarioId}`, {
+		this.fetchJson(`/api/usuarios/${usuarioId}`, {
 			method: 'PUT',
 			headers: {
-				'Content-Type': 'application/json',
-				'Accept': 'application/json'
+				'Content-Type': 'application/json'
 			},
 			body: JSON.stringify(dados)
 		})
-			.then(response => {
-				console.log('📨 Resposta recebida:', response.status, response.statusText);
-
-				if (!response.ok) {
-					return response.json().then(err => {
-						console.error('❌ Erro detalhado da API:', err);
-						// Extrai mensagem de erro
-						let errorMessage = 'Erro desconhecido ao salvar';
-						if (err) {
-							if (typeof err === 'string') {
-								errorMessage = err;
-							} else if (err.message) {
-								errorMessage = err.message;
-							} else if (err.error) {
-								errorMessage = err.error;
-							} else {
-								errorMessage = JSON.stringify(err);
-							}
-						}
-						throw new Error(errorMessage);
-					});
-				}
-				return response.json();
-			})
 			.then(data => {
 				console.log('✅ Usuário atualizado com sucesso:', data);
 				this.mostrarMensagemSucesso('✅ Usuário atualizado com sucesso!');
@@ -1155,8 +1140,8 @@ class UsuariosManager {
 				console.error('❌ Erro ao salvar edição:', err);
 				this.mostrarMensagemErro('❌ Erro ao salvar alterações: ' + err.message);
 
-				// Reabre o modal em caso de erro
-				if (modalElement) {
+				// Reabre o modal em caso de erro (se ainda existir no DOM)
+				if (modalElement && document.body.contains(modalElement)) {
 					setTimeout(() => {
 						const modal = new bootstrap.Modal(modalElement);
 						modal.show();
@@ -1182,11 +1167,10 @@ class UsuariosManager {
 
 		console.log(`⏸️ Desativando usuário ${userId}...`);
 
-		fetch(`/api/usuarios/${userId}/desativar`, {
+		this.fetchJson(`/api/usuarios/${userId}/desativar`, {
 			method: 'PATCH'
 		})
-			.then(response => {
-				if (!response.ok) throw new Error('Erro ao desativar usuário');
+			.then(() => {
 				console.log('✅ Usuário desativado com sucesso');
 				this.mostrarMensagemSucesso('Usuário desativado com sucesso!');
 				this.loadUsuariosData();
@@ -1204,11 +1188,10 @@ class UsuariosManager {
 
 		console.log(`▶️ Reativando usuário ${userId}...`);
 
-		fetch(`/api/usuarios/${userId}/reativar`, {
+		this.fetchJson(`/api/usuarios/${userId}/reativar`, {
 			method: 'PATCH'
 		})
-			.then(response => {
-				if (!response.ok) throw new Error('Erro ao reativar usuário');
+			.then(() => {
 				console.log('✅ Usuário reativado com sucesso');
 				this.mostrarMensagemSucesso('Usuário reativado com sucesso!');
 				this.loadUsuariosData();
@@ -1226,15 +1209,10 @@ class UsuariosManager {
 
 		console.log(`🗑️ Excluindo usuário ${userId}...`);
 
-		fetch(`/api/usuarios/${userId}`, {
+		this.fetchJson(`/api/usuarios/${userId}`, {
 			method: 'DELETE'
 		})
-			.then(response => {
-				if (!response.ok) {
-					return response.text().then(text => {
-						throw new Error(text || 'Erro ao excluir usuário');
-					});
-				}
+			.then(() => {
 				console.log('✅ Usuário excluído com sucesso');
 				this.mostrarMensagemSucesso('✅ Usuário excluído com sucesso!');
 				this.loadUsuariosData();
@@ -1381,8 +1359,7 @@ class UsuariosManager {
 	}
 
 	carregarUsuariosParaRelatorio() {
-		fetch("/api/usuarios")
-			.then(response => response.json())
+		this.fetchJson("/api/usuarios")
 			.then(usuarios => {
 				const userSelect = document.getElementById('userSelect');
 				if (userSelect) {
@@ -1392,12 +1369,6 @@ class UsuariosManager {
 					usuarios.forEach(usuario => {
 						const option = document.createElement('option');
 						option.value = usuario.id;
-
-						// Adiciona badge para indicar se é ADMIN
-						let badge = '';
-						if (usuario.perfil === 'ADMIN') {
-							badge = ' <span class="badge bg-danger">ADMIN</span>';
-						}
 
 						option.textContent =
 							`${usuario.nome}${usuario.perfil === 'ADMIN' ? ' [ADMIN]' : ''} (${usuario.email})`;
@@ -1472,20 +1443,15 @@ class UsuariosManager {
 	}
 
 	async buscarTodosUsuarios() {
-		const response = await fetch("/api/usuarios");
-		if (!response.ok) throw new Error('Erro ao buscar usuários');
-		return await response.json();
+		return await this.fetchJson("/api/usuarios");
 	}
+
 	async buscarHierarquiaUsuario(userId) {
 		// 1) Busca o usuário base completo
-		const baseResp = await fetch(`/api/usuarios/${userId}`);
-		if (!baseResp.ok) throw new Error('Erro ao buscar usuário base da hierarquia');
-		const base = await baseResp.json();
+		const base = await this.fetchJson(`/api/usuarios/${userId}`);
 
 		// 2) Busca a lista de descendentes (pode vir “resumida”)
-		const filhosResp = await fetch(`/api/usuarios/${userId}/hierarquia`);
-		if (!filhosResp.ok) throw new Error('Erro ao buscar hierarquia do usuário');
-		const descendentes = await filhosResp.json();
+		const descendentes = await this.fetchJson(`/api/usuarios/${userId}/hierarquia`);
 
 		// Junta tudo (base + descendentes)
 		const lista = [base, ...(descendentes || [])];
@@ -1512,15 +1478,13 @@ class UsuariosManager {
 	}
 
 	async buscarUsuarioDetalhado(id) {
-		const r = await fetch(`/api/usuarios/${id}`);
-		if (!r.ok) {
+		try {
+			return await this.fetchJson(`/api/usuarios/${id}`);
+		} catch {
 			// se falhar, retorna pelo menos algo para não quebrar export
 			return { id };
 		}
-		return await r.json();
 	}
-
-
 
 	// ============================================
 	// EXPORTAÇÃO (CSV / JSON)
@@ -1649,12 +1613,35 @@ class UsuariosManager {
 
 		this.downloadArquivo(csvComBOM, nomeArquivo, 'text/csv;charset=utf-8;');
 	}
+
+	// ✅ Mantive sua chamada, caso exista em outro arquivo
+	gerarJSON(usuarios, exportType, userId) {
+		// Se você já tem esse método em outro lugar, pode remover daqui.
+		// Vou deixar um fallback seguro.
+		const agora = new Date();
+		const tsArquivo = agora.toISOString().slice(0, 19).replace(/[:T]/g, '-');
+
+		const nomeArquivo =
+			exportType === 'all'
+				? `usuarios-${tsArquivo}.json`
+				: `usuarios-hierarquia-${userId}-${tsArquivo}.json`;
+
+		const payload = {
+			tipoExportacao: exportType,
+			dataExportacao: agora.toISOString(),
+			total: (usuarios || []).length,
+			usuarios: usuarios || []
+		};
+
+		this.downloadArquivo(JSON.stringify(payload, null, 2), nomeArquivo, 'application/json;charset=utf-8;');
+	}
 }
+
 // ============================================
 // INICIALIZAÇÃO DO MANAGER
 // ============================================
 
-document.addEventListener("DOMContentLoaded", function() {
+document.addEventListener("DOMContentLoaded", function () {
 	console.log('👥 Inicializando UsuariosManager...');
 
 	// Aguarda um momento para garantir que o DOM está pronto
