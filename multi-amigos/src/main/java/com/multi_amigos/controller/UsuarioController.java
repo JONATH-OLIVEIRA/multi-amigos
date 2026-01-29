@@ -1,7 +1,6 @@
 package com.multi_amigos.controller;
 
 import java.time.LocalDate;
-import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
@@ -24,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import com.multi_amigos.DTO.AtualizarUsuarioDTO;
 import com.multi_amigos.DTO.CadastroPublicoDTO;
@@ -34,6 +34,7 @@ import com.multi_amigos.DTO.UsuarioDetalheDTO;
 import com.multi_amigos.DTO.UsuarioHierarquiaDTO;
 import com.multi_amigos.service.UsuarioService;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 
 @RestController
@@ -42,8 +43,8 @@ public class UsuarioController {
 
 	private final UsuarioService usuarioService;
 	
-	@Value("${app.base-url}")
-	private String baseUrl;
+	@Value("${app.frontend.base-url:}")
+	private String frontendBaseUrl;
 	
 	public UsuarioController(UsuarioService usuarioService) {
 		this.usuarioService = usuarioService;
@@ -279,14 +280,22 @@ public class UsuarioController {
 
 	    usuarioService.buscarPorId(usuarioId);
 
-	    String baseUrl =
-	            request.getScheme() + "://" +
-	            request.getServerName() +
-	            ((request.getServerPort() == 80 || request.getServerPort() == 443)
-	                    ? ""
-	                    : ":" + request.getServerPort());
+	    // 1) Preferência: URL configurada (produção)
+	    String base = (frontendBaseUrl != null) ? frontendBaseUrl.trim() : "";
 
-	    String linkConvite = baseUrl + "/cadastro?ref=" + usuarioId;
+	    // 2) Fallback: monta pelo request respeitando X-Forwarded-* (Render / proxy)
+	    if (base.isBlank()) {
+	        base = ServletUriComponentsBuilder.fromRequestUri(request)
+	                .replacePath(null)
+	                .replaceQuery(null)
+	                .build()
+	                .toUriString();
+	    }
+
+	    // 3) Normaliza (evita barra dupla)
+	    if (base.endsWith("/")) base = base.substring(0, base.length() - 1);
+
+	    String linkConvite = base + "/cadastro?ref=" + usuarioId;
 
 	    Map<String, String> response = new HashMap<>();
 	    response.put("link", linkConvite);
