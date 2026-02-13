@@ -92,7 +92,7 @@ public class SecurityConfig {
                     "/", "/home",
 
                     // Páginas de autenticação (views)
-                    "/auth/login", "/auth/register", "/auth/forgot", "/auth/resetar-senha",
+                    "/auth/login", "/auth/register", "/auth/forgot", "/auth/resetar-senha","/resetar-senha",
 
                     // Endpoints do AuthController (login/register/validate)
                     "/auth/**",

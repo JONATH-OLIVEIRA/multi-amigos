@@ -17,7 +17,8 @@
           <p class="text-muted">Crie uma nova senha para sua conta.</p>
 
           <form id="resetForm">
-            <input type="hidden" id="token" th:value="${token}" />
+            <!-- 🔴 REMOVIDO th:value, agora usa JavaScript -->
+            <input type="hidden" id="token" value="" />
 
             <div class="mb-3">
               <label class="form-label">Nova senha</label>
@@ -47,63 +48,92 @@
 </div>
 
 <script>
+// ✅ FUNÇÃO PARA PEGAR TOKEN DA URL
+function getTokenFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('token') || '';
+}
+
+// ✅ CARREGAR TOKEN QUANDO A PÁGINA INICIAR
+document.addEventListener('DOMContentLoaded', function() {
+    const token = getTokenFromUrl();
+    document.getElementById('token').value = token;
+    
+    // Se não tiver token, redireciona IMEDIATAMENTE
+    if (!token) {
+        window.location.href = '/auth/login?error=expired';
+    }
+});
+
+// ✅ SUBMISSÃO DO FORMULÁRIO
 document.getElementById('resetForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  const token = document.getElementById('token').value.trim();
-  const novaSenha = document.getElementById('novaSenha').value;
-  const confirmarSenha = document.getElementById('confirmarSenha').value;
+    const token = document.getElementById('token').value.trim();
+    const novaSenha = document.getElementById('novaSenha').value;
+    const confirmarSenha = document.getElementById('confirmarSenha').value;
+    const btn = document.getElementById('btnSubmit');
+    const msg = document.getElementById('msg');
 
-  const btn = document.getElementById('btnSubmit');
-  const msg = document.getElementById('msg');
-  msg.innerHTML = '';
+    msg.innerHTML = '';
 
-  if (!token) {
-    msg.innerHTML = `<div class="alert alert-danger">Token inválido. Solicite novamente.</div>`;
-    return;
-  }
-
-  if (novaSenha.length < 6) {
-    msg.innerHTML = `<div class="alert alert-danger">A senha precisa ter pelo menos 6 caracteres.</div>`;
-    return;
-  }
-
-  if (novaSenha !== confirmarSenha) {
-    msg.innerHTML = `<div class="alert alert-danger">As senhas não coincidem.</div>`;
-    return;
-  }
-
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Salvando...';
-
-  try {
-    const res = await fetch('/auth/reset', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ token, novaSenha })
-    });
-
-    const data = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      throw new Error(data?.message || 'Não foi possível redefinir a senha.');
+    // ✅ Validação do token
+    if (!token) {
+        msg.innerHTML = `<div class="alert alert-danger">Token inválido. Solicite novamente.</div>`;
+        setTimeout(() => window.location.href = '/auth/login?error=expired', 1500);
+        return;
     }
 
-    msg.innerHTML = `
-      <div class="alert alert-success">
-        ${data.message || 'Senha redefinida com sucesso.'}
-        <div class="mt-2">Você será redirecionado para o login.</div>
-      </div>
-    `;
+    // ✅ Validação da senha
+    if (novaSenha.length < 6) {
+        msg.innerHTML = `<div class="alert alert-danger">A senha precisa ter pelo menos 6 caracteres.</div>`;
+        return;
+    }
 
-    setTimeout(() => window.location.href = '/auth/login?reset=success', 1200);
+    if (novaSenha !== confirmarSenha) {
+        msg.innerHTML = `<div class="alert alert-danger">As senhas não coincidem.</div>`;
+        return;
+    }
 
-  } catch (err) {
-    msg.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Redefinir senha';
-  }
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Salvando...';
+
+    try {
+        // ✅ CHAMADA AO BACKEND
+        const res = await fetch('/auth/reset', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ token, novaSenha })
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+            throw new Error(data?.message || 'Não foi possível redefinir a senha.');
+        }
+
+        // ✅ SUCESSO
+        msg.innerHTML = `
+            <div class="alert alert-success">
+                ${data.message || 'Senha redefinida com sucesso!'}
+                <div class="mt-2">Redirecionando para o login...</div>
+            </div>
+        `;
+
+        setTimeout(() => window.location.href = '/auth/login?reset=success', 1500);
+
+    } catch (err) {
+        // ✅ ERRO - INCLUI TOKEN EXPIRADO DO BACKEND
+        msg.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+        
+        // Se for token expirado, redireciona após mostrar erro
+        if (err.message.includes('expirado') || err.message.includes('inválido')) {
+            setTimeout(() => window.location.href = '/auth/login?error=expired', 2000);
+        }
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Redefinir senha';
+    }
 });
 </script>
 </body>
