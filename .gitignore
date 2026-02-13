@@ -1,0 +1,56 @@
+### 🔴 ARQUIVOS COM SENHAS - NUNCA SUBIR! ###
+application-dev.properties
+application-local.properties
+application-*.properties
+!application-example.properties
+.env
+*.env
+
+### 🔴 IDE ###
+.idea/
+*.iws
+*.iml
+*.ipr
+.classpath
+.project
+.settings/
+.vscode/
+.metadata
+.classpath
+.project
+.factorypath
+.springBeans
+
+### 🔴 Logs e builds ###
+target/
+build/
+logs/
+*.log
+*.tmp
+*.pid
+*.bak
+*.swp
+*.swo
+*~
+
+### 🔴 Sistema ###
+.DS_Store
+Thumbs.db
+desktop.ini
+
+### 🔴 Maven ###
+log/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.properties
+
+### 🔴 Spring Boot ###
+/spring-boot-admin/
+/spring-boot-admin-sample/
+/spring-boot-devtools.properties
