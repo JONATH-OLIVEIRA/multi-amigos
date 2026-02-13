@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +43,8 @@ public class UsuarioServiceImpl implements UsuarioService {
 		this.passwordEncoder = new BCryptPasswordEncoder();
 	}
 
+	@Override
+	@Cacheable(value = "usuarios", key = "#telefone")
 	public Usuario buscarPorTelefone(String telefone) {
 		String normalizado = (telefone == null) ? null : telefone.replaceAll("\\D", "");
 
