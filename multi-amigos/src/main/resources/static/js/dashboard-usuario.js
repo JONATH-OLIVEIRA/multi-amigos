@@ -1,80 +1,82 @@
 // ===============================
-// AUTH + FETCH (ÚNICO E SEGURO)
+// AUTH + API (ÚNICO E SEGURO) - COOKIE HttpOnly
 // ===============================
 (function authBootstrap() {
-    const token = localStorage.getItem('token');
+    // Helper único de API (global)
+    if (!window.Api) {
+        window.Api = {
+            authHeaders(extra = {}) {
+                return { 'Accept': 'application/json', ...extra };
+            },
 
-    if (!token) {
-        window.location.href = "/auth/login?error=expired";
-        return;
+            async fetchRaw(url, options = {}) {
+                const opts = { ...options };
+                opts.headers = this.authHeaders(opts.headers || {});
+                if (!opts.credentials) opts.credentials = 'same-origin';
+                return fetch(url, opts);
+            },
+
+            async fetchJson(url, options = {}) {
+                const opts = { ...options };
+                opts.headers = this.authHeaders(opts.headers || {});
+                if (!opts.credentials) opts.credentials = 'same-origin';
+
+                if (opts.body && typeof opts.body === 'object' && !(opts.body instanceof FormData)) {
+                    if (!opts.headers['Content-Type']) opts.headers['Content-Type'] = 'application/json';
+                    opts.body = JSON.stringify(opts.body);
+                }
+
+                const res = await fetch(url, opts);
+
+                if (res.status === 401) {
+                    window.location.href = "/auth/login?error=expired";
+                    throw new Error('Sessão expirada. Faça login novamente.');
+                }
+
+                const contentType = res.headers.get('content-type') || '';
+                const isJson = contentType.includes('application/json');
+
+                const body = isJson
+                    ? await res.json().catch(() => ({}))
+                    : await res.text().catch(() => '');
+
+                if (!res.ok) {
+                    if (res.status === 403) {
+                        throw new Error('Acesso negado. Você não tem permissão para essa ação.');
+                    }
+
+                    let msg = '';
+                    if (typeof body === 'string') msg = body;
+                    else if (body && typeof body === 'object') msg = body.error || body.message || JSON.stringify(body);
+
+                    throw new Error(`Erro ${res.status}: ${msg || res.statusText}`);
+                }
+
+                return body;
+            }
+        };
     }
 
-    function parseJwt(t) {
+    // ✅ Descobre nome do usuário sem token no front:
+    // preferencial: backend já renderiza no Thymeleaf ou expõe /api/me
+    // então tentamos carregar /api/me e preencher navbar.
+    (async () => {
+        const navbarUsername = document.getElementById('navbarUsername');
+        if (!navbarUsername) return;
+
+        // Se o Thymeleaf já tiver preenchido, não mexe
+        if (navbarUsername.textContent && navbarUsername.textContent.trim()) return;
+
         try {
-            const base64Url = t.split('.')[1];
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const jsonPayload = decodeURIComponent(atob(base64).split('').map(c =>
-                '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
-            ).join(''));
-            return JSON.parse(jsonPayload);
+            const me = await window.Api.fetchJson('/api/me', { method: 'GET' });
+            const nome = me?.nome || me?.name || me?.username || me?.email || 'Usuário';
+            navbarUsername.textContent = nome;
         } catch (e) {
-            return null;
+            // Se cair aqui por 401, já redirecionou.
+            // Caso seja outro erro, só deixa o placeholder.
+            console.warn('Não foi possível carregar /api/me para navbar:', e?.message);
         }
-    }
-
-    const payload = parseJwt(token);
-    const navbarUsername = document.getElementById('navbarUsername');
-    if (navbarUsername) {
-        const nome =
-            payload?.name ||
-            payload?.nome ||
-            payload?.username ||
-            payload?.preferred_username ||
-            payload?.sub ||
-            payload?.email ||
-            'Usuário';
-        navbarUsername.textContent = nome;
-    }
-
-    if (window.fetch && window.fetch.__jwtIntercepted) return;
-
-    const originalFetch = window.fetch;
-    window.fetch = async function(resource, options = {}) {
-        const url = typeof resource === 'string' ? resource : resource.url;
-
-        const isStatic =
-            url.includes('/css/') || url.includes('/js/') || url.includes('/images/') ||
-            url.endsWith('.css') || url.endsWith('.js') || url.endsWith('.ico') ||
-            url.includes('/webjars/') || url.includes('cdn.jsdelivr.net') || url.includes('d3js.org');
-
-        if (isStatic) {
-            return originalFetch(resource, options);
-        }
-
-        const latestToken = localStorage.getItem('token');
-        if (!latestToken) {
-            window.location.href = "/auth/login?error=expired";
-            return originalFetch(resource, options);
-        }
-
-        const newOptions = { ...options };
-        newOptions.headers = { ...(newOptions.headers || {}) };
-
-        if (!newOptions.headers['Authorization']) {
-            newOptions.headers['Authorization'] = `Bearer ${latestToken}`;
-        }
-
-        const resp = await originalFetch(resource, newOptions);
-
-        if (resp.status === 401 || resp.status === 403) {
-            localStorage.removeItem('token');
-            window.location.href = "/auth/login?error=expired";
-        }
-
-        return resp;
-    };
-
-    window.fetch.__jwtIntercepted = true;
+    })();
 })();
 
 // ==========================
@@ -95,9 +97,13 @@ function atualizarPerfilUI() {
 // ============================================
 // FUNÇÕES DO DASHBOARD
 // ============================================
-function logout() {
-    if (confirm("Deseja realmente sair?")) {
-        localStorage.removeItem('token');
+async function logout() {
+    if (!confirm("Deseja realmente sair?")) return;
+
+    try {
+        // ✅ backend já apaga cookie jwt_token
+        await window.Api.fetchRaw('/auth/logout', { method: 'POST' }).catch(() => null);
+    } finally {
         window.location.href = "/auth/login";
     }
 }
@@ -127,79 +133,79 @@ function carregarMinhaRede() {
     setTimeout(() => carregarHierarquia(), 100);
 }
 
-function carregarHierarquia() {
-    fetch('/api/me/hierarquia')
-        .then(r => { if (!r.ok) throw new Error(`Erro ${r.status}`); return r.json(); })
-        .then(hierarquia => {
-            const container = document.getElementById('redeContainer');
-            if (!container) return;
+async function carregarHierarquia() {
+    try {
+        const hierarquia = await window.Api.fetchJson('/api/me/hierarquia', { method: 'GET' });
 
-            if (!hierarquia || hierarquia.length === 0) {
-                container.innerHTML = `
-                    <div class="alert alert-info">
-                        <i class="bi bi-info-circle"></i>
-                        Você ainda não tem ninguém na sua rede.
-                    </div>
-                `;
-                return;
-            }
+        const container = document.getElementById('redeContainer');
+        if (!container) return;
 
-            let html = `
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>Nome</th>
-                                <th>Email</th>
-                                <th>Telefone</th>
-                                <th>Status</th>
-                                <th>Data Cadastro</th>
-                            </tr>
-                        </thead>
-                        <tbody>
+        if (!hierarquia || hierarquia.length === 0) {
+            container.innerHTML = `
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    Você ainda não tem ninguém na sua rede.
+                </div>
             `;
+            return;
+        }
 
-            hierarquia.forEach(filho => {
-                const status = filho.ativo
-                    ? '<span class="badge bg-success">Ativo</span>'
-                    : '<span class="badge bg-secondary">Inativo</span>';
+        let html = `
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Email</th>
+                            <th>Telefone</th>
+                            <th>Status</th>
+                            <th>Data Cadastro</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
 
-                html += `
-                    <tr>
-                        <td>${escapeHtml(filho.nome)}</td>
-                        <td>${escapeHtml(filho.email)}</td>
-                        <td>${escapeHtml(filho.telefone || 'Não informado')}</td>
-                        <td>${status}</td>
-                        <td>${formatarData(filho.dataCriacao)}</td>
-                    </tr>
-                `;
-            });
+        hierarquia.forEach(filho => {
+            const status = filho.ativo
+                ? '<span class="badge bg-success">Ativo</span>'
+                : '<span class="badge bg-secondary">Inativo</span>';
 
             html += `
-                        </tbody>
-                    </table>
-                </div>
-                <div class="mt-3">
-                    <div class="alert alert-success">
-                        <i class="bi bi-people"></i>
-                        <strong>Total na sua rede:</strong> ${hierarquia.length} pessoa${hierarquia.length !== 1 ? 's' : ''}
-                    </div>
-                </div>
-            `;
-
-            container.innerHTML = html;
-        })
-        .catch(err => {
-            console.error(err);
-            const container = document.getElementById('redeContainer');
-            if (!container) return;
-            container.innerHTML = `
-                <div class="alert alert-danger">
-                    <i class="bi bi-exclamation-triangle"></i>
-                    Não foi possível carregar sua rede. Tente novamente.
-                </div>
+                <tr>
+                    <td>${escapeHtml(filho.nome)}</td>
+                    <td>${escapeHtml(filho.email)}</td>
+                    <td>${escapeHtml(filho.telefone || 'Não informado')}</td>
+                    <td>${status}</td>
+                    <td>${formatarData(filho.dataCriacao)}</td>
+                </tr>
             `;
         });
+
+        html += `
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-3">
+                <div class="alert alert-success">
+                    <i class="bi bi-people"></i>
+                    <strong>Total na sua rede:</strong> ${hierarquia.length} pessoa${hierarquia.length !== 1 ? 's' : ''}
+                </div>
+            </div>
+        `;
+
+        container.innerHTML = html;
+
+    } catch (err) {
+        console.error(err);
+        const container = document.getElementById('redeContainer');
+        if (!container) return;
+        container.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle"></i>
+                Não foi possível carregar sua rede. Tente novamente.
+            </div>
+        `;
+    }
 }
 
 function gerarLinkConvite() {
@@ -227,47 +233,46 @@ function gerarLinkConvite() {
     setTimeout(() => gerarLink(), 100);
 }
 
-function gerarLink() {
-    fetch('/api/me/link-convite')
-        .then(r => { if (!r.ok) throw new Error(`Erro ${r.status}`); return r.json(); })
-        .then(data => {
-            const container = document.getElementById('conviteContainer');
-            if (!container) return;
+async function gerarLink() {
+    try {
+        const data = await window.Api.fetchJson('/api/me/link-convite', { method: 'GET' });
 
-            container.innerHTML = `
-                <div class="text-center">
-                    <div class="alert alert-success">
-                        <h5><i class="bi bi-check-circle"></i> ${data.mensagem}</h5>
-                        <p class="mb-3">${data.instrucoes}</p>
+        const container = document.getElementById('conviteContainer');
+        if (!container) return;
+
+        container.innerHTML = `
+            <div class="text-center">
+                <div class="alert alert-success">
+                    <h5><i class="bi bi-check-circle"></i> ${escapeHtml(data.mensagem || 'Convite gerado')}</h5>
+                    <p class="mb-3">${escapeHtml(data.instrucoes || '')}</p>
+                </div>
+
+                <div class="card mt-3">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0">Seu link de convite:</h6>
                     </div>
-
-                    <div class="card mt-3">
-                        <div class="card-header bg-light">
-                            <h6 class="mb-0">Seu link de convite:</h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="input-group">
-                                <input type="text" class="form-control" id="linkConvite" value="${data.link}" readonly>
-                                <button class="btn btn-success" type="button" onclick="copiarLink()">
-                                    <i class="bi bi-clipboard"></i> Copiar
-                                </button>
-                            </div>
+                    <div class="card-body">
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="linkConvite" value="${escapeHtml(data.link || '')}" readonly>
+                            <button class="btn btn-success" type="button" onclick="copiarLink()">
+                                <i class="bi bi-clipboard"></i> Copiar
+                            </button>
                         </div>
                     </div>
                 </div>
-            `;
-        })
-        .catch(err => {
-            console.error(err);
-            const container = document.getElementById('conviteContainer');
-            if (!container) return;
-            container.innerHTML = `
-                <div class="alert alert-danger">
-                    <i class="bi bi-exclamation-triangle"></i>
-                    Não foi possível gerar o link de convite. Tente novamente.
-                </div>
-            `;
-        });
+            </div>
+        `;
+    } catch (err) {
+        console.error(err);
+        const container = document.getElementById('conviteContainer');
+        if (!container) return;
+        container.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle"></i>
+                Não foi possível gerar o link de convite. Tente novamente.
+            </div>
+        `;
+    }
 }
 
 function verMeuPerfil() {
@@ -320,7 +325,7 @@ function mostrarMensagem(texto, tipo = 'info') {
     const mensagemHtml = `
         <div class="mensagem-flutuante alert alert-${tipo} alert-dismissible fade show" role="alert">
             <i class="bi ${icone} me-2"></i>
-            ${texto}
+            ${escapeHtml(texto)}
             <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
         </div>
     `;
@@ -331,7 +336,7 @@ function mostrarMensagem(texto, tipo = 'info') {
 function escapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div');
-    div.textContent = text;
+    div.textContent = String(text);
     return div.innerHTML;
 }
 
@@ -355,23 +360,20 @@ function formatarData(dataString) {
 document.addEventListener('DOMContentLoaded', function() {
     console.log('✅ Dashboard do usuário carregado');
 
-    // Configurar event listeners
-    document.getElementById('btnVerRede').addEventListener('click', carregarMinhaRede);
-    document.getElementById('btnGerarLink').addEventListener('click', gerarLinkConvite);
-    document.getElementById('btnVerPerfil').addEventListener('click', verMeuPerfil);
-    
-    if (document.getElementById('btnAtualizarMensagens')) {
-        document.getElementById('btnAtualizarMensagens').addEventListener('click', function() {
-            if (window.usuarioMensagemManager) {
-                window.usuarioMensagemManager.carregarMensagensSistema();
-            }
-        });
-    }
+    document.getElementById('btnVerRede')?.addEventListener('click', carregarMinhaRede);
+    document.getElementById('btnGerarLink')?.addEventListener('click', gerarLinkConvite);
+    document.getElementById('btnVerPerfil')?.addEventListener('click', verMeuPerfil);
 
+    document.getElementById('btnAtualizarMensagens')?.addEventListener('click', function() {
+        window.usuarioMensagemManager?.carregarMensagensSistema();
+    });
+
+    // ✅ inicializa mensagens (sem depender de token local)
     setTimeout(() => {
         if (window.UsuarioMensagemManager && !window.usuarioMensagemManager) {
             console.log('🚀 Inicializando UsuarioMensagemManager...');
             window.usuarioMensagemManager = new UsuarioMensagemManager();
+            window.usuarioMensagemManager.init();
         }
     }, 0);
 });

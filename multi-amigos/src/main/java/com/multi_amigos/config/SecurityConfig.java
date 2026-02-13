@@ -5,7 +5,6 @@ import java.util.Arrays;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -33,7 +32,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        // Obs: em produção, troque "*" pelo(s) domínio(s) do front.
+        // Em produção: substitua "*" pelo(s) domínio(s) do front.
         config.setAllowedOrigins(Arrays.asList("*"));
         config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         config.setAllowedHeaders(Arrays.asList("*"));
@@ -52,12 +51,12 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-            // ✅ Mantém comportamento: API retorna JSON; páginas redirecionam
+            // ✅ APIs retornam JSON; páginas redirecionam
             .exceptionHandling(exception -> exception
                 .authenticationEntryPoint((request, response, authException) -> {
                     String uri = request.getRequestURI();
 
-                    // 1) APIs retornam JSON (não redireciona)
+                    // APIs retornam JSON (não redireciona)
                     if (uri.startsWith("/api/")) {
                         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                         response.setContentType("application/json;charset=UTF-8");
@@ -65,13 +64,14 @@ public class SecurityConfig {
                         return;
                     }
 
-                    // 2) Recursos estáticos não devem redirecionar
-                    if (uri.contains(".") && !uri.endsWith(".html")) {
+                    // Recursos estáticos não devem redirecionar
+                    if (uri.startsWith("/css/") || uri.startsWith("/js/") || uri.startsWith("/images/")
+                        || uri.startsWith("/webjars/") || uri.equals("/favicon.ico")) {
                         response.setStatus(HttpServletResponse.SC_NOT_FOUND);
                         return;
                     }
 
-                    // 3) Páginas: redireciona pro login
+                    // Páginas privadas -> login
                     response.sendRedirect("/auth/login?error=expired");
                 })
                 .accessDeniedHandler((request, response, accessDeniedException) -> {
@@ -91,47 +91,49 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/", "/home",
 
-                    // ✅ Libera tudo de /auth/** (inclui /auth/validate)
+                    // Páginas de autenticação (views)
+                    "/auth/login", "/auth/register", "/auth/forgot", "/auth/resetar-senha",
+
+                    // Endpoints do AuthController (login/register/validate)
                     "/auth/**",
 
                     // Estáticos
                     "/css/**", "/js/**", "/images/**", "/favicon.ico", "/webjars/**",
 
-                    // Cadastro público (página)
-                    "/cadastro", "/cadastro/**",
-
-                    // ✅ Páginas HTML liberadas (JS controla a navegação, APIs protegem de verdade)
-                    "/admin/**", "/usuario/**", "/dashboard/**"
+                    // Cadastro por link (página)
+                    "/cadastro", "/cadastro/**"
                 ).permitAll()
 
-                // Swagger
+                // Swagger (se estiver usando)
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
 
                 // Preflight
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
                 // ==================== 🔓 APIs PÚBLICAS ESPECÍFICAS ====================
-                // Cadastro
+                // Cadastro público e por link (API)
                 .requestMatchers(HttpMethod.POST,
                     "/api/usuarios/cadastro-publico",
                     "/api/usuarios/cadastro-por-link/**"
                 ).permitAll()
 
-                // Esqueci a senha / reset (ajuste os métodos se seu controller usar GET também)
-                .requestMatchers(HttpMethod.POST,
-                    "/api/auth/forgot",
-                    "/api/auth/reset"
+                // Validar referência (API)
+                .requestMatchers(HttpMethod.GET,
+                    "/api/usuarios/validar-referencia/**"
                 ).permitAll()
 
+                // ==================== 🔐 PÁGINAS PROTEGIDAS ====================
+                .requestMatchers("/admin/**").hasRole("ADMIN")
+                .requestMatchers("/usuario/**").authenticated()
+
                 // ==================== 🔐 APIs PROTEGIDAS ====================
-                // Tudo que é /api/ precisa de token, exceto as permitAll acima
                 .requestMatchers("/api/**").authenticated()
 
-                // Qualquer outra requisição (se existir)
-                .anyRequest().permitAll()
+                // Qualquer outra rota não prevista -> bloqueia (evita “rota esquecida” ficar pública)
+                .anyRequest().denyAll()
             )
 
-            // 🔥 JWT filter antes do auth padrão
+            // JWT filter antes do auth padrão
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

@@ -41,7 +41,18 @@ public class UsuarioServiceImpl implements UsuarioService {
 		this.usuarioRepository = usuarioRepository;
 		this.passwordEncoder = new BCryptPasswordEncoder();
 	}
-	
+
+	public Usuario buscarPorTelefone(String telefone) {
+		String normalizado = (telefone == null) ? null : telefone.replaceAll("\\D", "");
+
+		if (normalizado == null || normalizado.isBlank()) {
+			throw new RuntimeException("Telefone inválido.");
+		}
+
+		return usuarioRepository.findByTelefone(normalizado)
+				.orElseThrow(() -> new RuntimeException("Usuário não encontrado para o telefone informado."));
+	}
+
 	@Override
 	public UsuarioDTO cadastrarUsuario(CadastroUsuarioDTO dto) {
 
@@ -295,9 +306,7 @@ public class UsuarioServiceImpl implements UsuarioService {
 	public List<UsuarioDTO> listarAtivos() {
 		// 🔥 OTIMIZADO: Use o novo método otimizado
 		return usuarioRepository.findAllAtivosComHierarquia() // ← MUDOU AQUI
-				.stream()
-				.map(UsuarioMapper::toDTO)
-				.collect(Collectors.toList());
+				.stream().map(UsuarioMapper::toDTO).collect(Collectors.toList());
 	}
 
 	@Override
@@ -371,73 +380,71 @@ public class UsuarioServiceImpl implements UsuarioService {
 					}
 				}).map(UsuarioMapper::toDTO).collect(Collectors.toList());
 	}
-	
+
 	// Adicione este método ao UsuarioServiceImpl
 	// No UsuarioServiceImpl.java - ATUALIZE o método obterArvoreGenealogica
 	@Override
 	@Transactional(readOnly = true)
 	public UsuarioArvoreDTO obterArvoreGenealogica(Long id) {
-	    Usuario usuario = usuarioRepository.findComHierarquiaCompletaById(id)
-	        .orElseThrow(() -> new UsuarioNaoEncontradoException("Usuário não encontrado"));
-	    
-	    // 🔥 Use o novo mapper SEM o parâmetro pai
-	    UsuarioNodeDTO raiz = UsuarioNodeMapper.toTreeDTO(usuario, 0);
-	    
-	    // Calcula estatísticas
-	    Map<String, Object> estatisticas = calcularEstatisticasArvore(raiz);
-	    
-	    UsuarioArvoreDTO arvore = new UsuarioArvoreDTO();
-	    arvore.setRaiz(raiz);
-	    arvore.setTotalNiveis((int) estatisticas.get("totalNiveis"));
-	    arvore.setTotalMembros((int) estatisticas.get("totalMembros"));
-	    arvore.setDistribuicaoPorNivel((Map<Integer, Integer>) estatisticas.get("distribuicaoPorNivel"));
-	    
-	    // DEBUG: Log do tamanho da árvore
-	    System.out.println("🌳 Árvore gerada para usuário ID: " + id);
-	    System.out.println("🌳 Total de membros: " + arvore.getTotalMembros());
-	    System.out.println("🌳 Total de níveis: " + arvore.getTotalNiveis());
-	    
-	    return arvore;
+		Usuario usuario = usuarioRepository.findComHierarquiaCompletaById(id)
+				.orElseThrow(() -> new UsuarioNaoEncontradoException("Usuário não encontrado"));
+
+		// 🔥 Use o novo mapper SEM o parâmetro pai
+		UsuarioNodeDTO raiz = UsuarioNodeMapper.toTreeDTO(usuario, 0);
+
+		// Calcula estatísticas
+		Map<String, Object> estatisticas = calcularEstatisticasArvore(raiz);
+
+		UsuarioArvoreDTO arvore = new UsuarioArvoreDTO();
+		arvore.setRaiz(raiz);
+		arvore.setTotalNiveis((int) estatisticas.get("totalNiveis"));
+		arvore.setTotalMembros((int) estatisticas.get("totalMembros"));
+		arvore.setDistribuicaoPorNivel((Map<Integer, Integer>) estatisticas.get("distribuicaoPorNivel"));
+
+		// DEBUG: Log do tamanho da árvore
+		System.out.println("🌳 Árvore gerada para usuário ID: " + id);
+		System.out.println("🌳 Total de membros: " + arvore.getTotalMembros());
+		System.out.println("🌳 Total de níveis: " + arvore.getTotalNiveis());
+
+		return arvore;
 	}
 
 	private Map<String, Object> calcularEstatisticasArvore(UsuarioNodeDTO node) {
-	    Map<String, Object> estatisticas = new HashMap<>();
-	    Map<Integer, Integer> distribuicao = new HashMap<>();
-	    
-	    int[] contadores = new int[2]; // [0] = totalMembros, [1] = totalNiveis
-	    
-	    calcularEstatisticasRecursivo(node, distribuicao, contadores, 0);
-	    
-	    estatisticas.put("totalMembros", contadores[0]);
-	    estatisticas.put("totalNiveis", contadores[1] + 1); // +1 porque começa em 0
-	    estatisticas.put("distribuicaoPorNivel", distribuicao);
-	    
-	    return estatisticas;
+		Map<String, Object> estatisticas = new HashMap<>();
+		Map<Integer, Integer> distribuicao = new HashMap<>();
+
+		int[] contadores = new int[2]; // [0] = totalMembros, [1] = totalNiveis
+
+		calcularEstatisticasRecursivo(node, distribuicao, contadores, 0);
+
+		estatisticas.put("totalMembros", contadores[0]);
+		estatisticas.put("totalNiveis", contadores[1] + 1); // +1 porque começa em 0
+		estatisticas.put("distribuicaoPorNivel", distribuicao);
+
+		return estatisticas;
 	}
 
-	private void calcularEstatisticasRecursivo(UsuarioNodeDTO node, 
-	                                          Map<Integer, Integer> distribuicao, 
-	                                          int[] contadores, 
-	                                          int nivelAtual) {
-	    if (node == null) return;
-	    
-	    // Conta este nó
-	    contadores[0]++;
-	    
-	    // Atualiza maior nível
-	    if (nivelAtual > contadores[1]) {
-	        contadores[1] = nivelAtual;
-	    }
-	    
-	    // Atualiza distribuição por nível
-	    distribuicao.put(nivelAtual, distribuicao.getOrDefault(nivelAtual, 0) + 1);
-	    
-	    // Processa filhos
-	    if (node.getFilhos() != null) {
-	        for (UsuarioNodeDTO filho : node.getFilhos()) {
-	            calcularEstatisticasRecursivo(filho, distribuicao, contadores, nivelAtual + 1);
-	        }
-	    }
-	}
+	private void calcularEstatisticasRecursivo(UsuarioNodeDTO node, Map<Integer, Integer> distribuicao,
+			int[] contadores, int nivelAtual) {
+		if (node == null)
+			return;
 
+		// Conta este nó
+		contadores[0]++;
+
+		// Atualiza maior nível
+		if (nivelAtual > contadores[1]) {
+			contadores[1] = nivelAtual;
+		}
+
+		// Atualiza distribuição por nível
+		distribuicao.put(nivelAtual, distribuicao.getOrDefault(nivelAtual, 0) + 1);
+
+		// Processa filhos
+		if (node.getFilhos() != null) {
+			for (UsuarioNodeDTO filho : node.getFilhos()) {
+				calcularEstatisticasRecursivo(filho, distribuicao, contadores, nivelAtual + 1);
+			}
+		}
+	}
 }

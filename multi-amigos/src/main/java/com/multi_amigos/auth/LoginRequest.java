@@ -1,33 +1,39 @@
 package com.multi_amigos.auth;
 
-
 public class LoginRequest {
+
+    // ✅ novo campo (preferido)
+    private String login;
+
+    // ✅ legado (mantém compatibilidade)
     private String email;
+
     private String senha;
 
-    // Construtor padrão
     public LoginRequest() {}
 
-    // Construtor com parâmetros
-    public LoginRequest(String email, String senha) {
-        this.email = email;
+    public LoginRequest(String login, String senha) {
+        this.login = login;
         this.senha = senha;
     }
 
-    // Getters e Setters
-    public String getEmail() {
-        return email;
+    // ✅ preferido pelo AuthController/AuthService
+    public String getLogin() {
+        // se vier só email (legado), usa ele como login
+        if ((login == null || login.isBlank()) && email != null && !email.isBlank()) {
+            return email;
+        }
+        return login;
     }
 
-    public void setEmail(String email) {
-        this.email = email;
+    public void setLogin(String login) {
+        this.login = login;
     }
 
-    public String getSenha() {
-        return senha;
-    }
+    // compat legado
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
 
-    public void setSenha(String senha) {
-        this.senha = senha;
-    }
+    public String getSenha() { return senha; }
+    public void setSenha(String senha) { this.senha = senha; }
 }

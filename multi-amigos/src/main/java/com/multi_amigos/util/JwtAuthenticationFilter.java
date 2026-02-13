@@ -29,249 +29,253 @@ import jakarta.servlet.http.HttpServletResponse;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-	@Autowired
-	private JwtUtil jwtUtil;
+    @Autowired
+    private JwtUtil jwtUtil;
 
-	@Autowired
-	private UsuarioRepository usuarioRepository;
+    @Autowired
+    private UsuarioRepository usuarioRepository;
 
-	public JwtAuthenticationFilter() {
-	}
+    public JwtAuthenticationFilter() {}
 
-	// 🔥 CACHE para usuários
-	private static class CachedUser {
-		final Usuario usuario;
-		final long timestamp;
+    // =========================
+    // CACHE para usuários
+    // =========================
+    private static class CachedUser {
+        final Usuario usuario;
+        final long timestamp;
 
-		CachedUser(Usuario usuario) {
-			this.usuario = usuario;
-			this.timestamp = System.currentTimeMillis();
-		}
+        CachedUser(Usuario usuario) {
+            this.usuario = usuario;
+            this.timestamp = System.currentTimeMillis();
+        }
 
-		boolean isValid(long cacheDurationMs) {
-			return System.currentTimeMillis() - timestamp < cacheDurationMs;
-		}
-	}
+        boolean isValid(long cacheDurationMs) {
+            return System.currentTimeMillis() - timestamp < cacheDurationMs;
+        }
+    }
 
-	private final Map<String, CachedUser> userCache = new ConcurrentHashMap<>();
-	private static final long CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutos
-	private static final long CLEANUP_INTERVAL_MS = 10 * 60 * 1000; // 10 minutos
-	private volatile long lastCleanup = System.currentTimeMillis();
+    private final Map<String, CachedUser> userCache = new ConcurrentHashMap<>();
+    private static final long CACHE_DURATION_MS = 5 * 60 * 1000;     // 5 min
+    private static final long CLEANUP_INTERVAL_MS = 10 * 60 * 1000;  // 10 min
+    private volatile long lastCleanup = System.currentTimeMillis();
 
-	@Override
-	protected boolean shouldNotFilter(HttpServletRequest request) {
-		String path = request.getServletPath();
+    // =========================
+    // ROTAS QUE NÃO DEVEM PASSAR PELO JWT FILTER
+    // =========================
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getServletPath();
 
-	    // JWT só para /api/**
-	    if (!path.startsWith("/api/")) {
-	        return true;
-	    }
+        // ---- Estáticos
+        if (path.startsWith("/css/")
+                || path.startsWith("/js/")
+                || path.startsWith("/images/")
+                || path.startsWith("/webjars/")
+                || path.equals("/favicon.ico")) {
+            return true;
+        }
 
-	    // APIs públicas (não precisam JWT)
-	    return path.equals("/api/auth/forgot")
-	        || path.equals("/api/auth/reset")
-	        || path.equals("/api/usuarios/cadastro-publico")
-	        || path.startsWith("/api/usuarios/cadastro-por-link/");
-	}
+        // ---- Páginas públicas
+        if (path.equals("/") || path.equals("/home")
+                || path.equals("/auth/login")
+                || path.equals("/auth/register")
+                || path.equals("/auth/forgot")
+                || path.equals("/auth/resetar-senha")
+                || path.startsWith("/cadastro")) {
+            return true;
+        }
 
+        // ---- Endpoints públicos (auth) - Controller está em /auth/**
+        if (path.startsWith("/auth/")) {
+            return true;
+        }
 
-	@Override
-	protected void doFilterInternal(
-			HttpServletRequest request,
-			HttpServletResponse response,
-			FilterChain filterChain
-	) throws ServletException, IOException {
+        // ---- APIs públicas específicas
+        if (path.equals("/api/usuarios/cadastro-publico")
+                || path.startsWith("/api/usuarios/cadastro-por-link/")
+                || path.startsWith("/api/usuarios/validar-referencia/")) {
+            return true;
+        }
 
-		String path = request.getServletPath();
-		System.out.println("🔍 JwtFilter - PATH: " + path);
+        // Se chegou aqui: deve filtrar
+        return false;
+    }
 
-		// ====================================================
-		// 1. EXTRAÇÃO DO TOKEN
-		// ====================================================
-		String token = null;
+    @Override
+    protected void doFilterInternal(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            FilterChain filterChain
+    ) throws ServletException, IOException {
 
-		String authHeader = request.getHeader("Authorization");
-		if (authHeader != null && authHeader.startsWith("Bearer ")) {
-			token = authHeader.substring(7);
-			System.out.println("🔑 JwtFilter: Token extraído do HEADER");
-		}
+        // ====================================================
+        // 1) EXTRAÇÃO DO TOKEN (SOMENTE HEADER OU COOKIE)
+        // ====================================================
+        String token = null;
 
-		if (token == null) {
-			token = request.getParameter("token");
-			if (token != null && !token.trim().isEmpty()) {
-				System.out.println("🔑 JwtFilter: Token extraído do PARÂMETRO");
-			}
-		}
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            token = authHeader.substring(7);
+        }
 
-		if (token == null && request.getCookies() != null) {
-			for (Cookie cookie : request.getCookies()) {
-				if ("jwt_token".equals(cookie.getName())) {
-					token = cookie.getValue();
-					System.out.println("🔑 JwtFilter: Token extraído do COOKIE");
-					break;
-				}
-			}
-		}
+        // ❌ REMOVIDO: token via query param (?token=...)
+        // Isso permitia "login por link" e vazamento de conta
 
-		// ====================================================
-		// 2. PROCESSAMENTO DO TOKEN
-		// ====================================================
-		if (token != null) {
-			Exception authenticationException = null;
+        // Opcional: cookie (se você decidir padronizar JWT em cookie HttpOnly)
+        if (token == null && request.getCookies() != null) {
+            for (Cookie cookie : request.getCookies()) {
+                if ("jwt_token".equals(cookie.getName())) {
+                    token = cookie.getValue();
+                    break;
+                }
+            }
+        }
 
-			try {
-				// 🔥 SOLUÇÃO 2 APLICADA AQUI
-				final String email = jwtUtil.extractEmail(token);
-				System.out.println("👤 JwtFilter: Email extraído: " + email);
+        // ====================================================
+        // 2) PROCESSAMENTO DO TOKEN
+        // ====================================================
+        if (token != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            try {
+                if (!jwtUtil.validateToken(token)) {
+                    cleanupCache();
+                    filterChain.doFilter(request, response);
+                    return;
+                }
 
-				if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                final String email = jwtUtil.extractEmail(token);
 
-					if (jwtUtil.validateToken(token)) {
-						System.out.println("✅ JwtFilter: Token VÁLIDO");
+                if (email == null || email.isBlank()) {
+                    cleanupCache();
+                    filterChain.doFilter(request, response);
+                    return;
+                }
 
-						Usuario usuario = getUsuarioFromCache(email);
+                Usuario usuario = getUsuarioFromCache(email);
 
-						if (usuario == null) {
-							System.out.println("📥 JwtFilter: Buscando usuário do banco: " + email);
+                if (usuario == null) {
+                    usuario = usuarioRepository.findByEmail(email)
+                            .orElseThrow(() -> new RuntimeException("Usuário não encontrado: " + email));
+                    cacheUsuario(email, usuario);
+                }
 
-							usuario = usuarioRepository.findByEmail(email)
-									.orElseThrow(() ->
-											new RuntimeException("Usuário não encontrado: " + email)
-									);
+                if (!usuario.isAtivo()) {
+                    cleanupCache();
+                    filterChain.doFilter(request, response);
+                    return;
+                }
 
-							cacheUsuario(email, usuario);
-							System.out.println("💾 JwtFilter: Usuário armazenado em cache: " + email);
-						} else {
-							System.out.println("⚡ JwtFilter: Usuário carregado do cache: " + email);
-						}
+                String role = usuario.getPerfil().name();
+                String nome = usuario.getNome();
 
-						if (!usuario.isAtivo()) {
-							System.out.println("❌ JwtFilter: Usuário INATIVO: " + email);
-							throw new RuntimeException("Usuário inativo");
-						}
+                var authorities = Collections.singletonList(
+                        new SimpleGrantedAuthority("ROLE_" + role)
+                );
 
-						String role = usuario.getPerfil().name();
-						String nome = usuario.getNome();
+                JwtUserDetails userDetails = new JwtUserDetails(
+                        usuario.getId(),
+                        email,
+                        nome,
+                        role
+                );
 
-						var authorities = Collections.singletonList(
-								new SimpleGrantedAuthority("ROLE_" + role)
-						);
+                UsernamePasswordAuthenticationToken authToken =
+                        new UsernamePasswordAuthenticationToken(
+                                userDetails,
+                                null,
+                                authorities
+                        );
 
-						JwtUserDetails userDetails = new JwtUserDetails(
-								usuario.getId(),
-								email,
-								nome,
-								role
-						);
+                authToken.setDetails(
+                        new WebAuthenticationDetailsSource().buildDetails(request)
+                );
 
-						UsernamePasswordAuthenticationToken authToken =
-								new UsernamePasswordAuthenticationToken(
-										userDetails,
-										null,
-										authorities
-								);
+                SecurityContextHolder.getContext().setAuthentication(authToken);
 
-						authToken.setDetails(
-								new WebAuthenticationDetailsSource().buildDetails(request)
-						);
+            } catch (Exception e) {
+                // Falhou em autenticar -> segue sem auth
+            } finally {
+                cleanupCache();
+            }
+        } else {
+            cleanupCache();
+        }
 
-						SecurityContextHolder.getContext().setAuthentication(authToken);
+        filterChain.doFilter(request, response);
+    }
 
-						System.out.println("✅ JwtFilter: Usuário AUTENTICADO - " + email);
-						System.out.println("✅ JwtFilter: Authorities: " + authorities);
+    // =========================
+    // CACHE
+    // =========================
+    private Usuario getUsuarioFromCache(String email) {
+        CachedUser cached = userCache.get(email);
+        if (cached != null && cached.isValid(CACHE_DURATION_MS)) {
+            return cached.usuario;
+        }
+        if (cached != null) {
+            userCache.remove(email);
+        }
+        return null;
+    }
 
-					} else {
-						System.out.println("❌ JwtFilter: Token INVÁLIDO");
-					}
-				}
+    private void cacheUsuario(String email, Usuario usuario) {
+        userCache.put(email, new CachedUser(usuario));
+    }
 
-			} catch (Exception e) {
-				authenticationException = e;
-				System.out.println("❌ JwtFilter: ERRO ao processar token: " + e.getMessage());
-			}
+    private void cleanupCache() {
+        long now = System.currentTimeMillis();
+        if (now - lastCleanup > CLEANUP_INTERVAL_MS) {
+            userCache.entrySet().removeIf(
+                    entry -> !entry.getValue().isValid(CACHE_DURATION_MS)
+            );
+            lastCleanup = now;
+        }
+    }
 
-			cleanupCache();
-		} else {
-			System.out.println("ℹ️ JwtFilter: Nenhum token encontrado");
-		}
+    // =========================
+    // USER DETAILS
+    // =========================
+    public static class JwtUserDetails implements UserDetails {
 
-		filterChain.doFilter(request, response);
-	}
+        private final Long id;
+        private final String email;
+        private final String nome;
+        private final String role;
 
-	// ====================================================
-	// CACHE
-	// ====================================================
-	private Usuario getUsuarioFromCache(String email) {
-		CachedUser cached = userCache.get(email);
-		if (cached != null && cached.isValid(CACHE_DURATION_MS)) {
-			return cached.usuario;
-		}
-		if (cached != null) {
-			userCache.remove(email);
-		}
-		return null;
-	}
+        public JwtUserDetails(Long id, String email, String nome, String role) {
+            this.id = id;
+            this.email = email;
+            this.nome = nome;
+            this.role = role;
+        }
 
-	private void cacheUsuario(String email, Usuario usuario) {
-		userCache.put(email, new CachedUser(usuario));
-	}
+        public JwtUserDetails(String email, String nome, String role) {
+            this(null, email, nome, role);
+        }
 
-	private void cleanupCache() {
-		long now = System.currentTimeMillis();
-		if (now - lastCleanup > CLEANUP_INTERVAL_MS) {
-			System.out.println("🧹 JwtFilter: Limpando cache...");
-			userCache.entrySet().removeIf(
-					entry -> !entry.getValue().isValid(CACHE_DURATION_MS)
-			);
-			lastCleanup = now;
-		}
-	}
+        @Override
+        public Collection<? extends GrantedAuthority> getAuthorities() {
+            return List.of(new SimpleGrantedAuthority("ROLE_" + role));
+        }
 
-	// ====================================================
-	// USER DETAILS
-	// ====================================================
-	public static class JwtUserDetails implements UserDetails {
+        @Override public String getPassword() { return null; }
+        @Override public String getUsername() { return email; }
+        @Override public boolean isAccountNonExpired() { return true; }
+        @Override public boolean isAccountNonLocked() { return true; }
+        @Override public boolean isCredentialsNonExpired() { return true; }
+        @Override public boolean isEnabled() { return true; }
 
-		private final Long id;
-		private final String email;
-		private final String nome;
-		private final String role;
+        public Long getId() { return id; }
+        public String getEmail() { return email; }
+        public String getNome() { return nome; }
+        public String getRole() { return role; }
 
-		public JwtUserDetails(Long id, String email, String nome, String role) {
-			this.id = id;
-			this.email = email;
-			this.nome = nome;
-			this.role = role;
-		}
-
-		public JwtUserDetails(String email, String nome, String role) {
-			this(null, email, nome, role);
-		}
-
-		@Override
-		public Collection<? extends GrantedAuthority> getAuthorities() {
-			return List.of(new SimpleGrantedAuthority("ROLE_" + role));
-		}
-
-		@Override public String getPassword() { return null; }
-		@Override public String getUsername() { return email; }
-		@Override public boolean isAccountNonExpired() { return true; }
-		@Override public boolean isAccountNonLocked() { return true; }
-		@Override public boolean isCredentialsNonExpired() { return true; }
-		@Override public boolean isEnabled() { return true; }
-
-		public Long getId() { return id; }
-		public String getEmail() { return email; }
-		public String getNome() { return nome; }
-		public String getRole() { return role; }
-
-		@Override
-		public String toString() {
-			return "JwtUserDetails{id=" + id +
-					", email='" + email + '\'' +
-					", nome='" + nome + '\'' +
-					", role='" + role + '\'' +
-					'}';
-		}
-	}
+        @Override
+        public String toString() {
+            return "JwtUserDetails{id=" + id +
+                    ", email='" + email + '\'' +
+                    ", nome='" + nome + '\'' +
+                    ", role='" + role + '\'' +
+                    '}';
+        }
+    }
 }

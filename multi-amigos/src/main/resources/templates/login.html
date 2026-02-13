@@ -17,18 +17,37 @@
         <!-- ✅ espaço para mensagens -->
         <div id="loginMsg"></div>
 
-        <form id="loginForm">
+        <form id="loginForm" novalidate>
             <div class="mb-3">
-                <label for="email" class="form-label">Email</label>
-                <input type="email" class="form-control" id="email" placeholder="email@exemplo.com" required>
+                <label for="email" class="form-label">Email ou Telefone</label>
+                <!-- 🔥 agora aceita email OU telefone -->
+                <input
+                    type="text"
+                    class="form-control"
+                    id="email"
+                    name="login"
+                    placeholder="email@exemplo.com ou (11) 99999-9999"
+                    autocomplete="username"
+                    required
+                >
+                <div class="form-text">
+                    Você pode entrar usando seu email ou seu telefone cadastrado.
+                </div>
             </div>
 
             <div class="mb-2">
                 <label for="senha" class="form-label">Senha</label>
-                <input type="password" class="form-control" id="senha" placeholder="Digite sua senha" required>
+                <input
+                    type="password"
+                    class="form-control"
+                    id="senha"
+                    placeholder="Digite sua senha"
+                    autocomplete="current-password"
+                    required
+                >
             </div>
 
-            <!-- ✅ Esqueci minha senha (novo) -->
+            <!-- ✅ Esqueci minha senha -->
             <div class="d-flex justify-content-end mb-3">
                 <a href="/auth/forgot" class="small text-decoration-none">Esqueci minha senha</a>
             </div>

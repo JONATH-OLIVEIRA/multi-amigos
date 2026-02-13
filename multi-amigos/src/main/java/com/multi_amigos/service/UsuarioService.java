@@ -39,7 +39,7 @@ public interface UsuarioService {
 	void reativarUsuario(Long id);
 
 	List<UsuarioDTO> listarTodos();
-	
+
 	List<UsuarioDTO> listarTodosAtivos(String nome, Boolean ativo);
 
 	List<UsuarioHierarquiaDTO> listarHierarquia(Long usuarioId);
@@ -49,13 +49,16 @@ public interface UsuarioService {
 	List<UsuarioDTO> listarPorPerfil(String perfil);
 
 	UsuarioDetalheDTO buscarDetalhe(Long id);
-	
+
 	UsuarioDTO buscarPorEmailDTO(String email);
 
 	// Método adicional: Buscar usuário com hierarquia completa
 	UsuarioDTO buscarComHierarquia(Long id);
-	
-	List<UsuarioDTO> listarComFiltros(String nome, String email, String perfil, Boolean ativo, 
-            LocalDate dataInicio, LocalDate dataFim);
-	 UsuarioArvoreDTO obterArvoreGenealogica(Long id);
+
+	List<UsuarioDTO> listarComFiltros(String nome, String email, String perfil, Boolean ativo, LocalDate dataInicio,
+			LocalDate dataFim);
+
+	UsuarioArvoreDTO obterArvoreGenealogica(Long id);
+
+	Usuario buscarPorTelefone(String telefone);
 }

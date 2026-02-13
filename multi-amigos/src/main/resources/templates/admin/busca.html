@@ -235,14 +235,7 @@
 
 		// Funções globais básicas
 		function voltarDashboard() {
-			const token = localStorage.getItem('token');
-
-			if (token) {
-				// SOLUÇÃO DE 1 LINHA: Passa o token na URL
-				window.location.href = `/admin/dashboard?token=${token}`;
-			} else {
-				window.location.href = '/login';
-			}
+			window.location.href = '/admin/dashboard';
 		}
 
 		// Função fecharModal atualizada para Bootstrap

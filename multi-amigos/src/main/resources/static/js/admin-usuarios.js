@@ -1,11 +1,12 @@
 // ============================================
 // USUARIOS MANAGER - GERENCIAMENTO DE USUÁRIOS
 // (mantendo tudo que funciona + melhorias de AUTH/ERROS)
+// ✅ COOKIE MODE (HttpOnly jwt_token)
 // ============================================
 
 class UsuariosManager {
 	constructor() {
-		console.log('👥 UsuariosManager inicializado');
+		console.log('👥 UsuariosManager inicializado (cookie-mode)');
 		this.initializeEventListeners();
 	}
 
@@ -14,33 +15,59 @@ class UsuariosManager {
 	}
 
 	// ============================================
-	// HTTP HELPERS (AUTH + JSON + ERROS) ✅ NOVO
+	// HTTP HELPERS (COOKIE + JSON + ERROS) ✅ ATUALIZADO
 	// ============================================
 
-	getToken() {
-		return localStorage.getItem("token");
-	}
-
-	authHeaders(extra = {}) {
-		const token = this.getToken();
+	/**
+	 * Cabeçalhos básicos (sem Authorization)
+	 * - não use token aqui (cookie HttpOnly)
+	 */
+	baseHeaders(extra = {}) {
 		return {
 			'Accept': 'application/json',
-			...(token ? { 'Authorization': `Bearer ${token}` } : {}),
 			...extra
 		};
 	}
 
+	/**
+	 * Fetch resiliente:
+	 * - sempre manda cookie: credentials: "include"
+	 * - detecta JSON vs texto
+	 * - trata 401/403 e mensagens do backend
+	 */
 	async fetchJson(url, options = {}) {
 		const opts = { ...options };
-		opts.headers = this.authHeaders(opts.headers || {});
+
+		// Headers
+		opts.headers = this.baseHeaders(opts.headers || {});
+		opts.credentials = 'include'; // 🔥 manda jwt_token
+
+		// Normaliza body/Content-Type quando necessário
+		if (opts.body != null) {
+			// Se body é objeto (não FormData), transforma em JSON
+			if (typeof opts.body === 'object' && !(opts.body instanceof FormData)) {
+				if (!opts.headers['Content-Type']) {
+					opts.headers['Content-Type'] = 'application/json';
+				}
+				// Se já veio string, respeita; senão stringifica
+				if (typeof opts.body !== 'string') {
+					opts.body = JSON.stringify(opts.body);
+				}
+			}
+		}
 
 		const res = await fetch(url, opts);
 
-		// 401: token inválido/expirado -> força login
+		// 401: sessão expirada/sem cookie -> login
 		if (res.status === 401) {
-			localStorage.removeItem("token");
-			window.location.href = "/auth/login";
+			// Em cookie-mode não tem token pra limpar, só redireciona
+			window.location.href = "/auth/login?error=expired";
 			throw new Error("Sessão expirada. Faça login novamente.");
+		}
+
+		// 403: sem permissão
+		if (res.status === 403) {
+			throw new Error("Acesso negado! Verifique suas permissões.");
 		}
 
 		const contentType = res.headers.get("content-type") || "";
@@ -51,11 +78,6 @@ class UsuariosManager {
 			: await res.text().catch(() => "");
 
 		if (!res.ok) {
-			// 403: permissão
-			if (res.status === 403) {
-				throw new Error("Acesso negado! Verifique suas permissões.");
-			}
-
 			// extrai mensagem do backend
 			let msg = "";
 			if (typeof body === "string") msg = body;
@@ -105,9 +127,7 @@ class UsuariosManager {
 		// Remove automaticamente após 5 segundos
 		setTimeout(() => {
 			const toast = document.querySelector('.alert-toast');
-			if (toast) {
-				toast.remove();
-			}
+			if (toast) toast.remove();
 		}, 5000);
 	}
 
@@ -283,10 +303,7 @@ class UsuariosManager {
 			btn.addEventListener('click', (e) => {
 				const userId = e.target.closest('button').dataset.id;
 				console.log('✏️ Editar usuário:', userId);
-				// Limpa modais existentes
-				if (window.limparBackdropEModal) {
-					window.limparBackdropEModal();
-				}
+				if (window.limparBackdropEModal) window.limparBackdropEModal();
 				setTimeout(() => {
 					this.abrirModalEditarUsuario(userId);
 				}, 300);
@@ -332,7 +349,6 @@ class UsuariosManager {
 			.then(usuario => {
 				console.log('✅ Detalhes carregados:', usuario);
 
-				// Cria modal de detalhes SIMPLIFICADO - SEM BOTÃO EDITAR
 				const modalHTML = `
             <div class="modal fade" id="detalhesUsuarioModal" tabindex="-1">
                 <div class="modal-dialog">
@@ -423,31 +439,19 @@ class UsuariosManager {
             </div>
         `;
 
-				// Remove modal anterior se existir
 				const existingModal = document.getElementById('detalhesUsuarioModal');
-				if (existingModal) {
-					existingModal.remove();
-				}
+				if (existingModal) existingModal.remove();
 
-				// Adiciona novo modal ao body
 				document.body.insertAdjacentHTML('beforeend', modalHTML);
 
-				// Obtém o modal
 				const modalElement = document.getElementById('detalhesUsuarioModal');
-
-				// Mostra o modal
 				const modal = new bootstrap.Modal(modalElement);
 				modal.show();
 
-				// Limpa quando o modal for fechado
 				modalElement.addEventListener('hidden.bs.modal', () => {
 					setTimeout(() => {
-						if (modalElement && document.body.contains(modalElement)) {
-							modalElement.remove();
-						}
-						if (window.limparBackdropEModal) {
-							window.limparBackdropEModal();
-						}
+						if (modalElement && document.body.contains(modalElement)) modalElement.remove();
+						if (window.limparBackdropEModal) window.limparBackdropEModal();
 					}, 300);
 				});
 			})
@@ -490,13 +494,12 @@ class UsuariosManager {
 	mostrarHierarquiaCompleta(usuario, pai, filhos) {
 		console.log('🎨 Mostrando hierarquia...');
 
-		// Usa o modal existente no dashboard
 		const modalTitle = document.getElementById('hierarquiaModalLabel');
 		const modalBody = document.getElementById('hierarquiaModalBody');
 
 		if (!modalTitle || !modalBody) {
 			console.error('❌ Modal de hierarquia não encontrado');
-			this.mostrarAlertaHierarquia(usuario, pai, filhos);
+			this.mostrarAlertaHierarquia?.(usuario, pai, filhos);
 			return;
 		}
 
@@ -504,7 +507,6 @@ class UsuariosManager {
 
 		let html = `
     <div class="hierarchy-container">
-        <!-- CABEÇALHO DO USUÁRIO ATUAL -->
         <div class="hierarchy-current-user">
             <div class="text-center">
                 <i class="bi bi-person-circle fs-1 ${usuario.perfil === 'ADMIN' ? 'text-danger' : 'text-primary'}"></i>
@@ -522,7 +524,6 @@ class UsuariosManager {
         </div>
         
         <div class="hierarchy-row">
-            <!-- COLUNA ESQUERDA: SUPERIOR -->
             <div class="hierarchy-card border-primary">
                 <div class="card-header">
                     <i class="bi bi-arrow-up"></i> Superior Imediato
@@ -560,7 +561,6 @@ class UsuariosManager {
                 </div>
             </div>
             
-            <!-- COLUNA DIREITA: SUBORDINADOS -->
             <div class="hierarchy-card border-success">
                 <div class="card-header">
                     <i class="bi bi-arrow-down"></i> Subordinados
@@ -613,7 +613,6 @@ class UsuariosManager {
             </div>
         </div>
         
-        <!-- RESUMO -->
         <div class="hierarchy-summary">
             <div class="row text-center">
                 <div class="col-md-4">
@@ -639,7 +638,6 @@ class UsuariosManager {
 
 		modalBody.innerHTML = html;
 
-		// Mostra o modal
 		const modal = new bootstrap.Modal(document.getElementById('hierarquiaModal'));
 		modal.show();
 	}
@@ -651,13 +649,9 @@ class UsuariosManager {
 	abrirModalNovoUsuario() {
 		console.log('➕ Abrindo modal novo usuário...');
 
-		// Remove modal existente se houver
 		const existingModal = document.getElementById('novoUsuarioModal');
-		if (existingModal) {
-			existingModal.remove();
-		}
+		if (existingModal) existingModal.remove();
 
-		// Cria novo modal
 		const modalHTML = `
             <div class="modal fade" id="novoUsuarioModal" tabindex="-1">
                 <div class="modal-dialog modal-lg">
@@ -728,11 +722,9 @@ class UsuariosManager {
 
 		document.body.insertAdjacentHTML('beforeend', modalHTML);
 
-		// ✅ aplica máscara no telefone
 		const telInput = document.getElementById('novoUsuarioTelefone');
 		if (window.aplicarMascaraTelefone) window.aplicarMascaraTelefone(telInput);
 
-		// Configura eventos
 		const modalElement = document.getElementById('novoUsuarioModal');
 		const form = document.getElementById('formNovoUsuario');
 
@@ -743,7 +735,6 @@ class UsuariosManager {
 			});
 		}
 
-		// Validação de senha
 		const senhaInput = document.getElementById('novoUsuarioSenha');
 		const confirmarInput = document.getElementById('novoUsuarioConfirmarSenha');
 		const senhaError = document.getElementById('senhaError');
@@ -760,22 +751,15 @@ class UsuariosManager {
 			});
 		}
 
-		// Carrega usuários para o campo pai
 		this.carregarUsuariosParaPaiNovo();
 
-		// Mostra o modal
 		const modal = new bootstrap.Modal(modalElement);
 		modal.show();
 
-		// Limpa quando o modal for fechado
 		modalElement.addEventListener('hidden.bs.modal', () => {
 			setTimeout(() => {
-				if (window.limparBackdropEModal) {
-					window.limparBackdropEModal();
-				}
-				if (modalElement && document.body.contains(modalElement)) {
-					modalElement.remove();
-				}
+				if (window.limparBackdropEModal) window.limparBackdropEModal();
+				if (modalElement && document.body.contains(modalElement)) modalElement.remove();
 			}, 300);
 		});
 	}
@@ -785,9 +769,7 @@ class UsuariosManager {
 			.then(usuarios => {
 				const selectPai = document.getElementById('novoUsuarioPaiId');
 				if (selectPai) {
-					while (selectPai.options.length > 1) {
-						selectPai.remove(1);
-					}
+					while (selectPai.options.length > 1) selectPai.remove(1);
 
 					usuarios.forEach(usuario => {
 						if (usuario.perfil !== 'ADMIN') {
@@ -851,10 +833,7 @@ class UsuariosManager {
 
 		this.fetchJson("/api/usuarios", {
 			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify(dados)
+			body: dados // ✅ pode mandar objeto, o fetchJson cuida do JSON
 		})
 			.then(() => {
 				console.log('✅ Usuário cadastrado com sucesso!');
@@ -886,17 +865,13 @@ class UsuariosManager {
 	abrirModalEditarUsuario(userId) {
 		console.log('🔧 Abrindo modal de edição para usuário ID:', userId);
 
-		// Remove modal existente se houver
 		const existingModal = document.getElementById('editarUsuarioModal');
-		if (existingModal) {
-			existingModal.remove();
-		}
+		if (existingModal) existingModal.remove();
 
 		this.fetchJson(`/api/usuarios/${userId}`)
 			.then(usuario => {
 				console.log('✅ Dados do usuário carregados:', usuario);
 
-				// Cria o modal SIMPLIFICADO
 				const modalHTML = `
                 <div class="modal fade" id="editarUsuarioModal" tabindex="-1">
                     <div class="modal-dialog modal-lg">
@@ -963,10 +938,8 @@ class UsuariosManager {
 
 				document.body.insertAdjacentHTML('beforeend', modalHTML);
 
-				// Configura evento de submit
 				const form = document.getElementById('formEditarUsuario');
 				if (form) {
-					// Remove event listener anterior para evitar duplicação
 					const newForm = form.cloneNode(true);
 					form.parentNode.replaceChild(newForm, form);
 
@@ -978,25 +951,18 @@ class UsuariosManager {
 					});
 				}
 
-				// Carrega usuários para o campo pai
 				this.carregarUsuariosParaPaiEdicao(usuario.id);
 
-				// Abre o modal
 				const modalElement = document.getElementById('editarUsuarioModal');
 				const modal = new bootstrap.Modal(modalElement);
 				modal.show();
 				console.log('✅ Modal aberto');
 
-				// Limpa quando o modal for fechado
 				modalElement.addEventListener('hidden.bs.modal', () => {
 					console.log('🗑️ Modal fechado, limpando...');
 					setTimeout(() => {
-						if (window.limparBackdropEModal) {
-							window.limparBackdropEModal();
-						}
-						if (modalElement && document.body.contains(modalElement)) {
-							modalElement.remove();
-						}
+						if (window.limparBackdropEModal) window.limparBackdropEModal();
+						if (modalElement && document.body.contains(modalElement)) modalElement.remove();
 					}, 300);
 				});
 			})
@@ -1011,10 +977,7 @@ class UsuariosManager {
 			.then(usuarios => {
 				const selectPai = document.getElementById('editarUsuarioPaiId');
 				if (selectPai) {
-					// Limpa opções existentes (exceto a primeira)
-					while (selectPai.options.length > 1) {
-						selectPai.remove(1);
-					}
+					while (selectPai.options.length > 1) selectPai.remove(1);
 
 					usuarios.forEach(usuario => {
 						if (usuario.id != usuarioAtualId) {
@@ -1025,7 +988,6 @@ class UsuariosManager {
 						}
 					});
 
-					// Se não houver usuários disponíveis
 					if (selectPai.options.length === 1) {
 						const option = document.createElement('option');
 						option.value = "";
@@ -1052,44 +1014,16 @@ class UsuariosManager {
 		const usuarioPaiIdSelect = document.getElementById('editarUsuarioPaiId');
 		const usuarioPaiId = usuarioPaiIdSelect ? usuarioPaiIdSelect.value || null : null;
 
-		console.log('📋 Dados coletados:', {
-			usuarioId,
-			nome,
-			email,
-			telefone,
-			perfil,
-			ativo,
-			usuarioPaiId
-		});
+		console.log('📋 Dados coletados:', { usuarioId, nome, email, telefone, perfil, ativo, usuarioPaiId });
 
-		// Validações básicas
-		if (!nome || nome.trim() === '') {
-			this.mostrarMensagemErro('❌ Nome é obrigatório!');
-			return;
-		}
+		if (!nome) { this.mostrarMensagemErro('❌ Nome é obrigatório!'); return; }
+		if (!email) { this.mostrarMensagemErro('❌ Email é obrigatório!'); return; }
 
-		if (!email || email.trim() === '') {
-			this.mostrarMensagemErro('❌ Email é obrigatório!');
-			return;
-		}
-
-		// Validação de email
 		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-		if (!emailRegex.test(email)) {
-			this.mostrarMensagemErro('❌ Email inválido!');
-			return;
-		}
+		if (!emailRegex.test(email)) { this.mostrarMensagemErro('❌ Email inválido!'); return; }
 
-		// Prepara dados para envio
-		const dados = {
-			nome: nome,
-			email: email,
-			telefone: telefone,
-			perfil: perfil,
-			ativo: ativo
-		};
+		const dados = { nome, email, telefone, perfil, ativo };
 
-		// Apenas adiciona usuarioPaiId se for válido
 		if (usuarioPaiId && usuarioPaiId !== 'null' && usuarioPaiId !== 'undefined' && usuarioPaiId !== usuarioId) {
 			dados.usuarioPaiId = usuarioPaiId;
 		}
@@ -1104,43 +1038,30 @@ class UsuariosManager {
 			submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Salvando...';
 		}
 
-		// Fecha o modal antes da requisição
 		const modalElement = document.getElementById('editarUsuarioModal');
 		if (modalElement) {
 			const modal = bootstrap.Modal.getInstance(modalElement);
-			if (modal) {
-				modal.hide();
-			}
+			if (modal) modal.hide();
 		}
 
 		console.log('🌐 Enviando requisição PUT para:', `/api/usuarios/${usuarioId}`);
 
 		this.fetchJson(`/api/usuarios/${usuarioId}`, {
 			method: 'PUT',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify(dados)
+			body: dados // ✅ objeto, fetchJson cuida do JSON
 		})
 			.then(data => {
 				console.log('✅ Usuário atualizado com sucesso:', data);
 				this.mostrarMensagemSucesso('✅ Usuário atualizado com sucesso!');
 
-				// Limpa backdrops
-				if (window.limparBackdropEModal) {
-					window.limparBackdropEModal();
-				}
+				if (window.limparBackdropEModal) window.limparBackdropEModal();
 
-				// Recarrega a lista de usuários
-				setTimeout(() => {
-					this.loadUsuariosData();
-				}, 500);
+				setTimeout(() => this.loadUsuariosData(), 500);
 			})
 			.catch(err => {
 				console.error('❌ Erro ao salvar edição:', err);
 				this.mostrarMensagemErro('❌ Erro ao salvar alterações: ' + err.message);
 
-				// Reabre o modal em caso de erro (se ainda existir no DOM)
 				if (modalElement && document.body.contains(modalElement)) {
 					setTimeout(() => {
 						const modal = new bootstrap.Modal(modalElement);
@@ -1161,15 +1082,11 @@ class UsuariosManager {
 	// ============================================
 
 	desativarUsuario(userId) {
-		if (!confirm('Tem certeza que deseja DESATIVAR este usuário?\n\nO usuário não poderá mais fazer login no sistema.')) {
-			return;
-		}
+		if (!confirm('Tem certeza que deseja DESATIVAR este usuário?\n\nO usuário não poderá mais fazer login no sistema.')) return;
 
 		console.log(`⏸️ Desativando usuário ${userId}...`);
 
-		this.fetchJson(`/api/usuarios/${userId}/desativar`, {
-			method: 'PATCH'
-		})
+		this.fetchJson(`/api/usuarios/${userId}/desativar`, { method: 'PATCH' })
 			.then(() => {
 				console.log('✅ Usuário desativado com sucesso');
 				this.mostrarMensagemSucesso('Usuário desativado com sucesso!');
@@ -1182,15 +1099,11 @@ class UsuariosManager {
 	}
 
 	reativarUsuario(userId) {
-		if (!confirm('Tem certeza que deseja REATIVAR este usuário?\n\nO usuário voltará a ter acesso ao sistema.')) {
-			return;
-		}
+		if (!confirm('Tem certeza que deseja REATIVAR este usuário?\n\nO usuário voltará a ter acesso ao sistema.')) return;
 
 		console.log(`▶️ Reativando usuário ${userId}...`);
 
-		this.fetchJson(`/api/usuarios/${userId}/reativar`, {
-			method: 'PATCH'
-		})
+		this.fetchJson(`/api/usuarios/${userId}/reativar`, { method: 'PATCH' })
 			.then(() => {
 				console.log('✅ Usuário reativado com sucesso');
 				this.mostrarMensagemSucesso('Usuário reativado com sucesso!');
@@ -1203,15 +1116,11 @@ class UsuariosManager {
 	}
 
 	excluirUsuario(userId) {
-		if (!confirm('⚠️ ATENÇÃO: Esta ação é irreversível!\n\nTem certeza que deseja EXCLUIR permanentemente este usuário?\n\nTodas as informações associadas serão perdidas.')) {
-			return;
-		}
+		if (!confirm('⚠️ ATENÇÃO: Esta ação é irreversível!\n\nTem certeza que deseja EXCLUIR permanentemente este usuário?\n\nTodas as informações associadas serão perdidas.')) return;
 
 		console.log(`🗑️ Excluindo usuário ${userId}...`);
 
-		this.fetchJson(`/api/usuarios/${userId}`, {
-			method: 'DELETE'
-		})
+		this.fetchJson(`/api/usuarios/${userId}`, { method: 'DELETE' })
 			.then(() => {
 				console.log('✅ Usuário excluído com sucesso');
 				this.mostrarMensagemSucesso('✅ Usuário excluído com sucesso!');
@@ -1230,13 +1139,9 @@ class UsuariosManager {
 	gerarRelatorioUsuarios() {
 		console.log('📊 Abrindo opções de exportação...');
 
-		// Remove modal existente se houver
 		const existingModal = document.getElementById('relatorioModal');
-		if (existingModal) {
-			existingModal.remove();
-		}
+		if (existingModal) existingModal.remove();
 
-		// Cria modal de opções de exportação
 		const modalHTML = `
 			<div class="modal fade" id="relatorioModal" tabindex="-1">
 				<div class="modal-dialog">
@@ -1316,44 +1221,29 @@ class UsuariosManager {
 
 		document.body.insertAdjacentHTML('beforeend', modalHTML);
 
-		// Configura eventos
 		const modalElement = document.getElementById('relatorioModal');
 		const exportTypeRadios = document.querySelectorAll('input[name="exportType"]');
 		const subtreeOptions = document.getElementById('subtreeOptions');
 		const btnExport = document.getElementById('btnExportRelatorio');
 
-		// Carrega lista de usuários para o select
 		this.carregarUsuariosParaRelatorio();
 
-		// Mostra/esconde opções baseado no tipo de exportação
 		exportTypeRadios.forEach(radio => {
 			radio.addEventListener('change', () => {
-				if (radio.value === 'subtree') {
-					subtreeOptions.classList.remove('d-none');
-				} else {
-					subtreeOptions.classList.add('d-none');
-				}
+				if (radio.value === 'subtree') subtreeOptions.classList.remove('d-none');
+				else subtreeOptions.classList.add('d-none');
 			});
 		});
 
-		// Evento do botão exportar
-		btnExport.addEventListener('click', () => {
-			this.executarExportacao();
-		});
+		btnExport.addEventListener('click', () => this.executarExportacao());
 
-		// Mostra o modal
 		const modal = new bootstrap.Modal(modalElement);
 		modal.show();
 
-		// Limpa quando o modal for fechado
 		modalElement.addEventListener('hidden.bs.modal', () => {
 			setTimeout(() => {
-				if (window.limparBackdropEModal) {
-					window.limparBackdropEModal();
-				}
-				if (modalElement && document.body.contains(modalElement)) {
-					modalElement.remove();
-				}
+				if (window.limparBackdropEModal) window.limparBackdropEModal();
+				if (modalElement && document.body.contains(modalElement)) modalElement.remove();
 			}, 300);
 		});
 	}
@@ -1363,16 +1253,11 @@ class UsuariosManager {
 			.then(usuarios => {
 				const userSelect = document.getElementById('userSelect');
 				if (userSelect) {
-					// Ordena usuários por nome
 					usuarios.sort((a, b) => a.nome.localeCompare(b.nome));
-
 					usuarios.forEach(usuario => {
 						const option = document.createElement('option');
 						option.value = usuario.id;
-
-						option.textContent =
-							`${usuario.nome}${usuario.perfil === 'ADMIN' ? ' [ADMIN]' : ''} (${usuario.email})`;
-
+						option.textContent = `${usuario.nome}${usuario.perfil === 'ADMIN' ? ' [ADMIN]' : ''} (${usuario.email})`;
 						userSelect.appendChild(option);
 					});
 				}
@@ -1395,7 +1280,6 @@ class UsuariosManager {
 		const format = document.querySelector('input[name="exportFormat"]:checked').value;
 		const userId = exportType === 'subtree' ? document.getElementById('userSelect').value : null;
 
-		// Validação
 		if (exportType === 'subtree' && !userId) {
 			alert('❌ Por favor, selecione um usuário para exportar a hierarquia.');
 			return;
@@ -1408,23 +1292,12 @@ class UsuariosManager {
 
 		try {
 			let usuarios = [];
+			if (exportType === 'all') usuarios = await this.buscarTodosUsuarios();
+			else usuarios = await this.buscarHierarquiaUsuario(userId);
 
-			if (exportType === 'all') {
-				// Exportar todos os usuários
-				usuarios = await this.buscarTodosUsuarios();
-			} else {
-				// Exportar hierarquia específica
-				usuarios = await this.buscarHierarquiaUsuario(userId);
-			}
+			if (format === 'csv') this.gerarCSV(usuarios, exportType, userId);
+			else this.gerarJSON(usuarios, exportType, userId);
 
-			// Gera o arquivo no formato selecionado
-			if (format === 'csv') {
-				this.gerarCSV(usuarios, exportType, userId);
-			} else {
-				this.gerarJSON(usuarios, exportType, userId);
-			}
-
-			// Fecha o modal
 			const modalElement = document.getElementById('relatorioModal');
 			if (modalElement) {
 				const modal = bootstrap.Modal.getInstance(modalElement);
@@ -1432,7 +1305,6 @@ class UsuariosManager {
 			}
 
 			this.mostrarMensagemSucesso(`✅ Relatório exportado com sucesso! (${usuarios.length} usuários)`);
-
 		} catch (error) {
 			console.error('❌ Erro ao exportar:', error);
 			this.mostrarMensagemErro('❌ Erro ao exportar: ' + error.message);
@@ -1447,16 +1319,11 @@ class UsuariosManager {
 	}
 
 	async buscarHierarquiaUsuario(userId) {
-		// 1) Busca o usuário base completo
 		const base = await this.fetchJson(`/api/usuarios/${userId}`);
-
-		// 2) Busca a lista de descendentes (pode vir “resumida”)
 		const descendentes = await this.fetchJson(`/api/usuarios/${userId}/hierarquia`);
 
-		// Junta tudo (base + descendentes)
 		const lista = [base, ...(descendentes || [])];
 
-		// 3) ENRIQUECE: garante que cada item tem os detalhes completos (telefone, pai, datas, etc)
 		const cache = new Map();
 		const detalhados = [];
 
@@ -1481,7 +1348,6 @@ class UsuariosManager {
 		try {
 			return await this.fetchJson(`/api/usuarios/${id}`);
 		} catch {
-			// se falhar, retorna pelo menos algo para não quebrar export
 			return { id };
 		}
 	}
@@ -1507,11 +1373,7 @@ class UsuariosManager {
 	escapeCSV(valor) {
 		if (valor === null || valor === undefined) return '';
 		const str = String(valor);
-
-		// Se tem vírgula, aspas ou quebra de linha, precisa aspas e escapar aspas
-		if (/[",\n\r;]/.test(str)) {
-			return `"${str.replace(/"/g, '""')}"`;
-		}
+		if (/[",\n\r;]/.test(str)) return `"${str.replace(/"/g, '""')}"`;
 		return str;
 	}
 
@@ -1524,7 +1386,6 @@ class UsuariosManager {
 				? `usuarios-${tsArquivo}.csv`
 				: `usuarios-hierarquia-${userId}-${tsArquivo}.csv`;
 
-		// Helpers
 		const formatBR = (iso) => {
 			if (!iso) return '';
 			const d = new Date(iso);
@@ -1535,11 +1396,8 @@ class UsuariosManager {
 		const getPaiId = (u) => u?.usuarioPaiId ?? u?.usuarioPai?.id ?? '';
 		const getTelefone = (u) => u?.telefone ?? u?.fone ?? u?.celular ?? '';
 
-		// Para calcular nome do pai e nível, montamos um mapa
 		const map = new Map();
-		(usuarios || []).forEach(u => {
-			if (u?.id != null) map.set(String(u.id), u);
-		});
+		(usuarios || []).forEach(u => { if (u?.id != null) map.set(String(u.id), u); });
 
 		const getPaiNome = (u) => {
 			const pid = getPaiId(u);
@@ -1548,12 +1406,9 @@ class UsuariosManager {
 			return pai?.nome ?? '';
 		};
 
-		// Nível: conta quantos pais até o topo e SOMA +1 (pra bater com seu exemplo: Admin = Nível 2)
 		const calcNivel = (u) => {
-			let depth = 1; // ele mesmo
+			let depth = 1;
 			let pid = getPaiId(u);
-
-			// trava anti-loop
 			const seen = new Set([String(u?.id)]);
 
 			while (pid) {
@@ -1563,17 +1418,16 @@ class UsuariosManager {
 
 				depth++;
 				const pai = map.get(spid);
-				pid = pai ? getPaiId(pai) : ''; // se pai não estiver na lista, para
+				pid = pai ? getPaiId(pai) : '';
 			}
 			return `Nível ${depth + 1}`;
 		};
 
-		// Monta CSV no formato “bonito”
 		const linhas = [];
 		linhas.push(`Tipo de Exportação: ${exportType === 'all' ? 'Todos os usuários' : 'Hierarquia específica'}`);
 		linhas.push(`Data da Exportação: ${agora.toLocaleString('pt-BR')}`);
 		linhas.push(`Total de Registros: ${(usuarios || []).length}`);
-		linhas.push(''); // linha em branco
+		linhas.push('');
 
 		const colunas = [
 			'ID',
@@ -1607,17 +1461,13 @@ class UsuariosManager {
 			linhas.push(row.join(';'));
 		}
 
-		// ✅ Excel/Windows: use CRLF + BOM UTF-8 pra não quebrar acentos/cedilha
 		const csv = linhas.join('\r\n');
 		const csvComBOM = '\uFEFF' + csv;
 
 		this.downloadArquivo(csvComBOM, nomeArquivo, 'text/csv;charset=utf-8;');
 	}
 
-	// ✅ Mantive sua chamada, caso exista em outro arquivo
 	gerarJSON(usuarios, exportType, userId) {
-		// Se você já tem esse método em outro lugar, pode remover daqui.
-		// Vou deixar um fallback seguro.
 		const agora = new Date();
 		const tsArquivo = agora.toISOString().slice(0, 19).replace(/[:T]/g, '-');
 
@@ -1641,41 +1491,18 @@ class UsuariosManager {
 // INICIALIZAÇÃO DO MANAGER
 // ============================================
 
-document.addEventListener("DOMContentLoaded", function () {
-	console.log('👥 Inicializando UsuariosManager...');
-
-	// Aguarda um momento para garantir que o DOM está pronto
-	setTimeout(() => {
-		try {
-			// Verifica se o Bootstrap está disponível
-			if (typeof bootstrap === 'undefined') {
-				console.error('❌ Bootstrap não está carregado!');
-				return;
-			}
-
-			// Verifica se estamos na página de usuários
-			const pageTitle = document.getElementById('pageTitle');
-			const isUsuariosPage = pageTitle && (
-				pageTitle.innerHTML.includes('Usuários') ||
-				pageTitle.textContent.includes('Usuários')
-			);
-			const hasUsuariosContainer = document.getElementById('usuariosContainer');
-
-			if (isUsuariosPage || hasUsuariosContainer) {
-				window.usuariosManager = new UsuariosManager();
-				console.log('✅ UsuariosManager inicializado com sucesso');
-
-				// Carrega dados imediatamente se o container existir
-				if (hasUsuariosContainer) {
-					setTimeout(() => {
-						window.usuariosManager.loadUsuariosData();
-					}, 500);
-				}
-			} else {
-				console.log('ℹ️ Não está na página de usuários, UsuariosManager não inicializado');
-			}
-		} catch (error) {
-			console.error('❌ Erro ao inicializar UsuariosManager:', error);
+document.addEventListener("DOMContentLoaded", function() {
+	try {
+		if (typeof bootstrap === "undefined") {
+			console.error("❌ Bootstrap não está carregado!");
+			return;
 		}
-	}, 300);
+
+		// ✅ Sempre inicializa (dashboard injeta as seções depois)
+		if (!window.usuariosManager) window.usuariosManager = new UsuariosManager();
+		console.log("✅ UsuariosManager pronto (lazy via seção)");
+	} catch (e) {
+		console.error("❌ Erro ao inicializar UsuariosManager:", e);
+	}
 });
+

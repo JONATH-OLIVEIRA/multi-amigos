@@ -84,7 +84,7 @@ public class ViewController {
 			System.out.println("❌ Autenticação NULA!");
 		}
 
-		return "busca";
+		return "/admin/busca";
 	}
 
 	@GetMapping("/usuario/dashboard")

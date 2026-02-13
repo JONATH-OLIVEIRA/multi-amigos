@@ -1,11 +1,9 @@
 /**
- * ADMIN MENSAGENS - Gerenciamento de Mensagens do Sistema
+ * ADMIN MENSAGENS - (COOKIE HttpOnly + ERROS PADRÃO)
  * Robusto para dashboard com páginas/sections injetadas dinamicamente
  */
-
 class MensagensManager {
 	constructor() {
-		this.token = localStorage.getItem('token');
 		this.initialize();
 	}
 
@@ -15,16 +13,62 @@ class MensagensManager {
 	}
 
 	// ============================================
-	// HELPERS
+	// HTTP HELPERS (COOKIE + JSON + ERROS) ✅
 	// ============================================
 
-	qs(selector, root = document) {
-		return root.querySelector(selector);
+	authHeaders(extra = {}) {
+		return {
+			'Accept': 'application/json',
+			...extra
+		};
 	}
 
-	byId(id) {
-		return document.getElementById(id);
+	async fetchJson(url, options = {}) {
+		const opts = { ...options };
+		opts.headers = this.authHeaders(opts.headers || {});
+
+		// ✅ garante cookie do mesmo domínio
+		if (!opts.credentials) opts.credentials = 'same-origin';
+
+		// Auto JSON
+		if (opts.body && typeof opts.body === 'object' && !(opts.body instanceof FormData)) {
+			if (!opts.headers['Content-Type']) opts.headers['Content-Type'] = 'application/json';
+			opts.body = JSON.stringify(opts.body);
+		}
+
+		const res = await fetch(url, opts);
+
+		if (res.status === 401) {
+			window.location.href = '/auth/login';
+			throw new Error('Sessão expirada. Faça login novamente.');
+		}
+
+		const contentType = res.headers.get('content-type') || '';
+		const isJson = contentType.includes('application/json');
+
+		const body = isJson
+			? await res.json().catch(() => ({}))
+			: await res.text().catch(() => '');
+
+		if (!res.ok) {
+			if (res.status === 403) throw new Error('Apenas administradores podem executar essa ação.');
+
+			let msg = '';
+			if (typeof body === 'string') msg = body;
+			else if (body && typeof body === 'object') msg = body.error || body.message || JSON.stringify(body);
+
+			throw new Error(`Erro ${res.status}: ${msg || res.statusText}`);
+		}
+
+		return body;
 	}
+
+	// ============================================
+	// HELPERS UI
+	// ============================================
+
+	qs(selector, root = document) { return root.querySelector(selector); }
+	byId(id) { return document.getElementById(id); }
 
 	ensureBootstrap() {
 		if (typeof bootstrap === 'undefined') {
@@ -34,7 +78,6 @@ class MensagensManager {
 		return true;
 	}
 
-	// Fecha e limpa backdrops
 	fecharModal(modalId) {
 		if (!this.ensureBootstrap()) return;
 
@@ -127,8 +170,6 @@ class MensagensManager {
 
 		document.body.insertAdjacentHTML('beforeend', html);
 		modal = this.byId('mensagemModal');
-
-		// bind do form recém-criado
 		this.bindFormsIfExist();
 		return modal;
 	}
@@ -189,8 +230,6 @@ class MensagensManager {
 
 		document.body.insertAdjacentHTML('beforeend', html);
 		modal = this.byId('editarMensagemModal');
-
-		// bind do form recém-criado
 		this.bindFormsIfExist();
 		return modal;
 	}
@@ -199,7 +238,7 @@ class MensagensManager {
 	// CRUD
 	// ============================================
 
-	criarMensagem(e) {
+	async criarMensagem(e) {
 		if (e) e.preventDefault();
 
 		this.bindFormsIfExist();
@@ -214,16 +253,11 @@ class MensagensManager {
 			return;
 		}
 
-		const titulo = tituloEl.value;
-		const conteudo = conteudoEl.value;
-		const tipo = tipoEl.value;
-		const diasValidade = diasEl ? diasEl.value : null;
-
 		const mensagemData = {
-			titulo,
-			conteudo,
-			tipo: String(tipo || '').toUpperCase(),
-			diasValidade: diasValidade ? parseInt(diasValidade) : null
+			titulo: tituloEl.value,
+			conteudo: conteudoEl.value,
+			tipo: String(tipoEl.value || '').toUpperCase(),
+			diasValidade: diasEl?.value ? parseInt(diasEl.value, 10) : null
 		};
 
 		if (!mensagemData.titulo || !mensagemData.conteudo || !mensagemData.tipo) {
@@ -237,55 +271,38 @@ class MensagensManager {
 			return;
 		}
 
-		const submitBtn = e ? e.target.querySelector('button[type="submit"]') : null;
+		const submitBtn = e?.target?.querySelector('button[type="submit"]');
 		const originalText = submitBtn ? submitBtn.innerHTML : '';
 		if (submitBtn) {
 			submitBtn.disabled = true;
 			submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Criando...';
 		}
 
-		fetch('/api/mensagens', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				'Authorization': `Bearer ${this.token}`
-			},
-			body: JSON.stringify(mensagemData)
-		})
-			.then(response => {
-				if (response.status === 403) throw new Error('Apenas administradores podem criar mensagens');
-				if (!response.ok) {
-					return response.json().then(err => {
-						throw new Error(err.message || 'Erro ao criar mensagem');
-					});
-				}
-				return response.json();
-			})
-			.then(() => {
-				alert('Mensagem criada com sucesso!');
+		try {
+			await this.fetchJson('/api/mensagens', { method: 'POST', body: mensagemData });
 
-				const form = this.byId('formMensagem');
-				if (form) form.reset();
+			alert('Mensagem criada com sucesso!');
 
-				this.fecharModal('mensagemModal');
-				this.loadMensagensData();
-			})
-			.catch(err => alert('Erro: ' + err.message))
-			.finally(() => {
-				if (submitBtn) {
-					submitBtn.disabled = false;
-					submitBtn.innerHTML = originalText;
-				}
-			});
+			const form = this.byId('formMensagem');
+			if (form) form.reset();
+
+			this.fecharModal('mensagemModal');
+			this.loadMensagensData();
+		} catch (err) {
+			alert('Erro: ' + err.message);
+		} finally {
+			if (submitBtn) {
+				submitBtn.disabled = false;
+				submitBtn.innerHTML = originalText;
+			}
+		}
 	}
 
 	abrirModalNovaMensagem() {
 		if (!this.ensureBootstrap()) return;
 
-		// garante que o modal existe
 		const modalElement = this.ensureNovoModalExists();
 
-		// reseta form
 		const form = this.byId('formMensagem');
 		if (form) form.reset();
 
@@ -296,47 +313,31 @@ class MensagensManager {
 		modal.show();
 	}
 
-	editarMensagem(id) {
-		fetch(`/api/mensagens/${id}`, {
-			method: 'GET',
-			headers: { 'Authorization': `Bearer ${this.token}` }
-		})
-			.then(response => {
-				if (!response.ok) return this.buscarMensagemDaListaGeral(id);
-				return response.json();
-			})
-			.then(mensagem => {
-				if (!mensagem) throw new Error('Mensagem não encontrada');
-				this.abrirModalEditarMensagem(mensagem);
-			})
-			.catch(err => {
-				console.error('Erro ao buscar mensagem:', err);
-				alert('Erro ao carregar mensagem para edição: ' + err.message);
-			});
-	}
+	async editarMensagem(id) {
+		try {
+			// tenta endpoint individual
+			let mensagem = null;
+			try {
+				mensagem = await this.fetchJson(`/api/mensagens/${id}`);
+			} catch {
+				// fallback: lista geral
+				const mensagens = await this.fetchJson('/api/mensagens/todas');
+				mensagem = (mensagens || []).find(m => String(m.id) === String(id));
+			}
 
-	buscarMensagemDaListaGeral(id) {
-		return fetch("/api/mensagens/todas", {
-			headers: { 'Authorization': `Bearer ${this.token}` }
-		})
-			.then(r => {
-				if (!r.ok) throw new Error('Erro ao buscar mensagens');
-				return r.json();
-			})
-			.then(mensagens => {
-				const mensagem = mensagens.find(m => m.id == id);
-				if (!mensagem) throw new Error('Mensagem não encontrada');
-				return mensagem;
-			});
+			if (!mensagem) throw new Error('Mensagem não encontrada');
+			this.abrirModalEditarMensagem(mensagem);
+		} catch (err) {
+			console.error('Erro ao buscar mensagem:', err);
+			alert('Erro ao carregar mensagem para edição: ' + err.message);
+		}
 	}
 
 	abrirModalEditarMensagem(mensagem) {
 		if (!this.ensureBootstrap()) return;
 
-		// garante que o modal existe
 		const modalElement = this.ensureEditarModalExists();
 
-		// preenche campos (agora eles SEMPRE existem porque o JS cria)
 		this.byId('editarMensagemId').value = mensagem.id ?? '';
 		this.byId('editarTituloMensagem').value = mensagem.titulo ?? '';
 		this.byId('editarConteudoMensagem').value = mensagem.conteudo ?? '';
@@ -361,7 +362,7 @@ class MensagensManager {
 		modal.show();
 	}
 
-	salvarEdicaoMensagem(event) {
+	async salvarEdicaoMensagem(event) {
 		console.log('🔄 ATUALIZANDO MENSAGEM');
 
 		if (event) {
@@ -390,94 +391,55 @@ class MensagensManager {
 			submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Salvando...';
 		}
 
-		fetch(`/api/mensagens/${id}`, {
-			method: 'PUT',
-			headers: {
-				'Content-Type': 'application/json',
-				'Authorization': `Bearer ${this.token}`
-			},
-			body: JSON.stringify(dados),
-			credentials: 'omit'
-		})
-			.then(response => {
-				if (!response.ok) {
-					return response.text().then(t => {
-						throw new Error(`HTTP ${response.status}: ${t.substring(0, 200)}`);
-					});
-				}
-				return response.json();
-			})
-			.then(data => {
-				alert('✅ Mensagem atualizada com sucesso!');
-				this.fecharModal('editarMensagemModal');
+		try {
+			const data = await this.fetchJson(`/api/mensagens/${id}`, { method: 'PUT', body: dados });
 
-				if (typeof window.atualizarMensagemNaUI === 'function') {
-					window.atualizarMensagemNaUI(data);
-				}
+			alert('✅ Mensagem atualizada com sucesso!');
+			this.fecharModal('editarMensagemModal');
 
-				setTimeout(() => this.loadMensagensData(), 300);
-			})
-			.catch(err => {
-				console.error('❌ Erro ao atualizar:', err);
-				alert('❌ Erro ao atualizar: ' + err.message);
-			})
-			.finally(() => {
-				if (submitBtn) {
-					submitBtn.disabled = false;
-					submitBtn.innerHTML = originalText;
-				}
-			});
+			if (typeof window.atualizarMensagemNaUI === 'function') {
+				window.atualizarMensagemNaUI(data);
+			}
+
+			setTimeout(() => this.loadMensagensData(), 300);
+		} catch (err) {
+			console.error('❌ Erro ao atualizar:', err);
+			alert('❌ Erro ao atualizar: ' + err.message);
+		} finally {
+			if (submitBtn) {
+				submitBtn.disabled = false;
+				submitBtn.innerHTML = originalText;
+			}
+		}
 
 		return false;
 	}
 
-	excluirMensagem(id) {
+	async excluirMensagem(id) {
 		if (!confirm('Tem certeza que deseja excluir esta mensagem?')) return;
 
-		fetch(`/api/mensagens/${id}`, {
-			method: 'DELETE',
-			headers: { 'Authorization': `Bearer ${this.token}` }
-		})
-			.then(r => {
-				if (!r.ok) throw new Error('Erro ao excluir mensagem');
-				this.loadMensagensData();
-			})
-			.catch(err => alert('Erro: ' + err.message));
+		try {
+			await this.fetchJson(`/api/mensagens/${id}`, { method: 'DELETE' });
+			this.loadMensagensData();
+		} catch (err) {
+			alert('Erro: ' + err.message);
+		}
 	}
 
-	toggleMensagemAtivo(id) {
+	async toggleMensagemAtivo(id) {
 		console.log(`Alternando status da mensagem ${id}`);
 
-		fetch(`/api/mensagens/${id}/toggle`, {
-			method: 'PATCH',
-			headers: {
-				'Authorization': `Bearer ${this.token}`,
-				'Content-Type': 'application/json'
-			},
-			credentials: 'omit'
-		})
-			.then(response => {
-				console.log('Resposta do toggle:', response.status);
+		try {
+			const mensagemAtualizada = await this.fetchJson(`/api/mensagens/${id}/toggle`, { method: 'PATCH' });
 
-				if (response.status === 401 || response.status === 403) {
-					localStorage.removeItem('token');
-					window.location.href = '/auth/login';
-					throw new Error('Sessão expirada');
-				}
-
-				if (!response.ok) throw new Error(`Erro ${response.status}`);
-				return response.json();
-			})
-			.then(mensagemAtualizada => {
-				if (typeof window.atualizarMensagemNaUI === 'function') {
-					window.atualizarMensagemNaUI(mensagemAtualizada);
-				}
-				console.log('✅ Status alterado com sucesso');
-			})
-			.catch(err => {
-				console.error('Erro no toggle:', err);
-				alert('Erro ao alterar status: ' + err.message);
-			});
+			if (typeof window.atualizarMensagemNaUI === 'function') {
+				window.atualizarMensagemNaUI(mensagemAtualizada);
+			}
+			console.log('✅ Status alterado com sucesso');
+		} catch (err) {
+			console.error('Erro no toggle:', err);
+			alert('Erro ao alterar status: ' + err.message);
+		}
 	}
 
 	// ============================================
@@ -517,7 +479,7 @@ class MensagensManager {
 			col.innerHTML = `
   <div class="card mensagem-card ${tipoClasse}">
     <div class="card-header d-flex justify-content-between align-items-center">
-      
+
       <div class="mensagem-header-text">
         <strong>${msg.titulo}</strong>
         <span class="badge ${badgeClass} ms-2">${msg.tipo}</span>
@@ -592,12 +554,12 @@ class MensagensManager {
 		try {
 			const date = new Date(dateString);
 			return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-		} catch (e) {
+		} catch {
 			return dateString;
 		}
 	}
 
-	loadMensagensData() {
+	async loadMensagensData() {
 		const container = this.byId('mensagensContainer');
 		const emptyState = this.byId('emptyMensagens');
 		const errorState = this.byId('errorMensagens');
@@ -609,23 +571,16 @@ class MensagensManager {
 
 		if (typeof window.showLoading === 'function') window.showLoading();
 
-		fetch("/api/mensagens/todas", {
-			headers: { 'Authorization': `Bearer ${this.token}` }
-		})
-			.then(r => {
-				if (!r.ok) throw new Error(`Erro ${r.status}`);
-				return r.json();
-			})
-			.then(mensagens => {
-				if (typeof window.hideLoading === 'function') window.hideLoading();
-				this.renderMensagens(mensagens);
-				this.bindFormsIfExist();
-			})
-			.catch(err => {
-				if (typeof window.hideLoading === 'function') window.hideLoading();
-				if (errorMessage) errorMessage.textContent = err.message;
-				if (errorState) errorState.classList.remove('d-none');
-			});
+		try {
+			const mensagens = await this.fetchJson('/api/mensagens/todas');
+			if (typeof window.hideLoading === 'function') window.hideLoading();
+			this.renderMensagens(mensagens);
+			this.bindFormsIfExist();
+		} catch (err) {
+			if (typeof window.hideLoading === 'function') window.hideLoading();
+			if (errorMessage) errorMessage.textContent = err.message;
+			if (errorState) errorState.classList.remove('d-none');
+		}
 	}
 }
 
@@ -633,7 +588,6 @@ class MensagensManager {
 document.addEventListener("DOMContentLoaded", () => {
 	window.mensagensManager = new MensagensManager();
 
-	// Exporta funções para uso global
 	window.abrirModalNovaMensagem = () => window.mensagensManager.abrirModalNovaMensagem();
 	window.editarMensagem = (id) => window.mensagensManager.editarMensagem(id);
 	window.excluirMensagem = (id) => window.mensagensManager.excluirMensagem(id);

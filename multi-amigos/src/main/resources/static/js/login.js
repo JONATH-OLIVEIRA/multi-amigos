@@ -1,8 +1,7 @@
-// login.js - VERSÃO AJUSTADA (sem document.write + sem voltar pro pai no ?cadastro=success)
+// login.js - COOKIE MODE (HttpOnly jwt_token) + login por email OU telefone
 
 document.addEventListener("DOMContentLoaded", () => {
   const loginForm = document.getElementById("loginForm");
-  const token = localStorage.getItem("token");
   const pathname = window.location.pathname;
   const params = new URLSearchParams(window.location.search);
 
@@ -11,64 +10,45 @@ document.addEventListener("DOMContentLoaded", () => {
   const hasAuthError = params.has("error"); // expired / denied / etc
   const resetSuccess = params.get("reset") === "success";
 
-  // ✅ Mensagem de sucesso do reset
+  function normalizeLogin(value) {
+    const v = (value || "").trim();
+    return v.includes("@") ? v : v.replace(/\D/g, "");
+  }
+
+  // =========================
+  // Mensagens da tela
+  // =========================
   if (isLoginPage && resetSuccess) {
     const box = document.getElementById("loginMsg");
     if (box) {
-      box.innerHTML = `<div class="alert alert-success">Senha redefinida com sucesso. Faça login.</div>`;
+      box.innerHTML =
+        `<div class="alert alert-success">Senha redefinida com sucesso. Faça login.</div>`;
     }
   }
 
-  // ✅ Regra: se veio de cadastro=success ou error=..., NÃO auto-redireciona.
-  // (E opcionalmente limpa token para não “voltar pro pai”)
+  // Regra: se veio de cadastro=success ou error=... ou reset=success, NÃO auto-redireciona
   if (isLoginPage && (cadastroSuccess || hasAuthError || resetSuccess)) {
     console.log("ℹ️ Login page com flag (cadastro/error/reset). Não fará auto-redirect.");
-    localStorage.removeItem("token");
-    localStorage.removeItem("perfil");
   } else {
-    // ✅ Auto-redirect somente se:
-    // - está na página de login
-    // - tem token
-    // - NÃO tem flags cadastro/error/reset
-    if (token && isLoginPage) {
-      console.log("🔄 Usuário já logado, validando token...");
-
-      fetch("/auth/validate", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-        .then((response) => {
-          if (response.ok) return response.json();
-          throw new Error("Token inválido");
-        })
-        .then((userData) => {
-          console.log("✅ Token válido! Perfil:", userData.role);
-
-          const dashboardUrl =
-            userData.role === "ADMIN" ? "/admin/dashboard" : "/usuario/dashboard";
-
-          console.log(`📍 Redirecionando para: ${dashboardUrl}`);
-          window.location.replace(dashboardUrl);
-        })
-        .catch((err) => {
-          console.warn("⚠️ Token inválido/expirado:", err?.message);
-          localStorage.removeItem("token");
-          localStorage.removeItem("perfil");
-          showLoggedInOptions();
-        });
+    // Auto-redirect se já estiver autenticado via cookie
+    if (isLoginPage) {
+      validateAndRedirectIfLogged();
     }
   }
 
-  // ============================================
+  // =========================
   // SUBMIT LOGIN
-  // ============================================
+  // =========================
   if (loginForm) {
     loginForm.addEventListener("submit", async (e) => {
       e.preventDefault();
 
-      const email = document.getElementById("email")?.value.trim();
+      // Campo no HTML ainda chama "email" — mas agora ele é "login" (email ou telefone)
+      const rawLogin = document.getElementById("email")?.value;
+      const login = normalizeLogin(rawLogin);
       const senha = document.getElementById("senha")?.value;
 
-      if (!email || !senha) {
+      if (!login || !senha) {
         alert("Por favor, preencha todos os campos!");
         return;
       }
@@ -83,32 +63,37 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       try {
-        console.log("📤 Enviando credenciais...");
+        console.log("📤 Enviando credenciais (cookie mode)...");
 
+        // 🔥 IMPORTANTE:
+        // - credentials: "include" para RECEBER o cookie HttpOnly jwt_token
+        // - manda { login, senha } (novo) e mantém { email } compatível (legado)
         const res = await fetch("/auth/login", {
           method: "POST",
+          credentials: "include",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, senha }),
+          body: JSON.stringify({ login, email: login, senha }),
         });
 
         if (!res.ok) {
-          throw new Error("Login falhou! Verifique email e senha.");
+          let msg = "Login falhou! Verifique email/telefone e senha.";
+          try {
+            const err = await res.json();
+            msg = err?.message || err?.error || msg;
+          } catch (_) {}
+          throw new Error(msg);
         }
 
-        const data = await res.json();
-        const newToken = data.token;
-        const perfil = data.perfil;
+        const data = await res.json().catch(() => ({}));
 
-        localStorage.setItem("token", newToken);
-        localStorage.setItem("perfil", perfil);
-
-        const dashboardUrl =
-          perfil === "ADMIN" ? "/admin/dashboard" : "/usuario/dashboard";
+        const perfil = data?.perfil; // "ADMIN" ou "USUARIO"
+        const dashboardUrl = perfil === "ADMIN" ? "/admin/dashboard" : "/usuario/dashboard";
 
         window.location.replace(dashboardUrl);
+
       } catch (err) {
         console.error("❌ Erro no login:", err);
-        alert("Erro: " + err.message);
+        alert("Erro: " + (err?.message || "Falha no login"));
 
         if (submitBtn) {
           submitBtn.disabled = false;
@@ -118,6 +103,42 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // =========================
+  // Helpers
+  // =========================
+  async function validateSession() {
+    try {
+      const validateRes = await fetch("/auth/validate", {
+        method: "GET",
+        credentials: "include",
+      });
+
+      if (!validateRes.ok) return null;
+      return await validateRes.json();
+    } catch (e) {
+      console.warn("⚠️ validate falhou:", e?.message);
+      return null;
+    }
+  }
+
+  async function validateAndRedirectIfLogged() {
+    console.log("🔄 Validando sessão via cookie...");
+    const userData = await validateSession();
+
+    if (userData?.authenticated) {
+      console.log("✅ Sessão ativa! Perfil:", userData.role);
+
+      const dashboardUrl =
+        userData.role === "ADMIN" ? "/admin/dashboard" : "/usuario/dashboard";
+
+      window.location.replace(dashboardUrl);
+      return;
+    }
+
+    console.log("ℹ️ Sem sessão ativa (cookie ausente/expirado).");
+    showLoggedInOptions();
+  }
+
   function showLoggedInOptions() {
     const container = document.querySelector(".card");
     if (container && !document.querySelector("#loggedInMsg")) {
@@ -125,8 +146,7 @@ document.addEventListener("DOMContentLoaded", () => {
       div.id = "loggedInMsg";
       div.className = "alert alert-info mt-3";
       div.innerHTML = `
-        <p><strong>Sessão expirada ou inválida</strong></p>
-        <p>Faça login novamente.</p>
+        <p><strong>Faça login para continuar</strong></p>
       `;
       container.appendChild(div);
     }
@@ -134,41 +154,40 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // ============================================
-// FUNÇÕES GLOBAIS
+// FUNÇÕES GLOBAIS (cookie mode)
 // ============================================
 async function goToDashboard() {
-  const token = localStorage.getItem("token");
-  if (!token) {
-    alert("Faça login primeiro!");
-    window.location.href = "/auth/login";
-    return;
-  }
-
   try {
     const validateRes = await fetch("/auth/validate", {
-      headers: { Authorization: `Bearer ${token}` },
+      method: "GET",
+      credentials: "include",
     });
 
-    if (!validateRes.ok) throw new Error("Token inválido ou expirado");
+    if (!validateRes.ok) throw new Error("Sessão inválida ou expirada");
 
     const userData = await validateRes.json();
+    if (!userData?.authenticated) throw new Error("Sessão inválida ou expirada");
+
     const dashboardUrl =
       userData.role === "ADMIN" ? "/admin/dashboard" : "/usuario/dashboard";
 
     window.location.replace(dashboardUrl);
   } catch (err) {
     console.error("❌ Erro ao ir para dashboard:", err);
-    alert("Erro: " + err.message);
-    localStorage.removeItem("token");
-    localStorage.removeItem("perfil");
-    window.location.href = "/auth/login";
+    alert("Faça login novamente.");
+    window.location.href = "/auth/login?error=expired";
   }
 }
 
-function logout() {
-  if (confirm("Deseja realmente sair?")) {
-    localStorage.removeItem("token");
-    localStorage.removeItem("perfil");
-    window.location.href = "/";
-  }
+async function logout() {
+  if (!confirm("Deseja realmente sair?")) return;
+
+  try {
+    await fetch("/auth/logout", {
+      method: "POST",
+      credentials: "include",
+    });
+  } catch (_) {}
+
+  window.location.href = "/";
 }

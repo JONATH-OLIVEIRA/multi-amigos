@@ -1,763 +1,632 @@
-// busca.js - Lógica principal da página de busca
+// busca.js - Lógica principal da página de busca (COOKIE MODE)
 
-(function() {
-	'use strict';
+(function () {
+  "use strict";
 
-	// Variáveis globais
-	let dataTable = null;
-	let isLoading = false;
+  let dataTable = null;
+  let isLoading = false;
 
-	/**
-	 * Inicializa a página de busca avançada
-	 */
-	function initBuscaAvancada() {
-		console.log('🚀 [Busca] Inicializando busca avançada...');
+  function initBuscaAvancada() {
+    console.log("🚀 [Busca] Inicializando busca avançada (cookie-mode)...");
 
-		try {
-			// 1. Inicializa DataTable
-			inicializarDataTable();
+    try {
+      inicializarDataTable();
+      configurarEventos();
+      verificarPermissoes();
+      aplicarEstilosIniciais();
 
-			// 2. Configura eventos
-			configurarEventos();
+      console.log("✅ [Busca] Busca avançada inicializada com sucesso");
+    } catch (error) {
+      console.error("❌ [Busca] Erro ao inicializar:", error);
+      mostrarNotificacao("Erro ao inicializar busca avançada", "error");
+    }
+  }
 
-			// 3. Verifica permissões
-			verificarPermissoes();
+  function inicializarDataTable() {
+    // ✅ Em cookie-mode, não existe token local.
+    // ✅ Permissão admin vem do auth.js via window.isAdmin()
+    const usuarioLogadoIsAdmin =
+      typeof window.isAdmin === "function" ? window.isAdmin() : false;
 
-			// 4. Aplica estilos iniciais
-			aplicarEstilosIniciais();
+    dataTable = $("#tabelaUsuarios").DataTable({
+      ajax: {
+        url: "/api/usuarios",
+        dataSrc: "",
 
-			console.log('✅ [Busca] Busca avançada inicializada com sucesso');
+        // 🔥 manda cookie no XHR do DataTables
+        xhrFields: { withCredentials: true },
 
-		} catch (error) {
-			console.error('❌ [Busca] Erro ao inicializar:', error);
-			mostrarNotificacao('Erro ao inicializar busca avançada', 'error');
-		}
-	}
+        // envia filtros como query params
+        data: function () {
+          const filtros = {};
 
-	/**
-	 * Inicializa a DataTable
-	 */
-	function inicializarDataTable() {
-		// 1. Busca o token para enviar no Header e para validar permissões
-		const token = localStorage.getItem('token');
+          const nome = $("#filtroNome").val();
+          if (nome && nome.trim() !== "") filtros.nome = nome;
 
-		// 2. Lógica interna para verificar se o usuário logado é ADMIN
-		let usuarioLogadoIsAdmin = false;
-		try {
-			if (token) {
-				const payload = JSON.parse(atob(token.split('.')[1]));
-				usuarioLogadoIsAdmin = (payload.role === 'ADMIN' || payload.perfil === 'ADMIN');
-			}
-		} catch (e) {
-			console.error("Erro ao decodificar permissões do token", e);
-		}
+          const email = $("#filtroEmail").val();
+          if (email && email.trim() !== "") filtros.email = email;
 
-		dataTable = $('#tabelaUsuarios').DataTable({
-			ajax: {
-				url: '/api/usuarios',
-				dataSrc: '',
-				headers: {
-					'Authorization': token ? `Bearer ${token}` : ''
-				},
-				// Esta função envia TODOS os parâmetros para o backend
-				data: function(d) {
-					const filtros = {};
+          const perfil = $("#filtroPerfil").val();
+          if (perfil && perfil.trim() !== "") filtros.perfil = perfil;
 
-					// Nome
-					const nome = $('#filtroNome').val();
-					if (nome && nome.trim() !== '') {
-						filtros.nome = nome;
-					}
+          const status = $("#filtroStatus").val();
+          if (status === "true" || status === "false") {
+            filtros.ativo = status === "true";
+          }
 
-					// Email
-					const email = $('#filtroEmail').val();
-					if (email && email.trim() !== '') {
-						filtros.email = email;
-					}
+          const dataInicio = $("#filtroDataInicio").val();
+          if (dataInicio && dataInicio.trim() !== "") filtros.dataInicio = dataInicio;
 
-					// Perfil
-					const perfil = $('#filtroPerfil').val();
-					if (perfil && perfil.trim() !== '') {
-						filtros.perfil = perfil;
-					}
+          const dataFim = $("#filtroDataFim").val();
+          if (dataFim && dataFim.trim() !== "") filtros.dataFim = dataFim;
 
-					// Status/Ativo
-					const status = $('#filtroStatus').val();
-					if (status === "true" || status === "false") {
-						filtros.ativo = (status === "true");
-					}
+          console.log("🔍 [Busca] Enviando filtros para backend:", filtros);
+          return filtros;
+        },
 
-					// Data Início (formato yyyy-MM-dd)
-					const dataInicio = $('#filtroDataInicio').val();
-					if (dataInicio && dataInicio.trim() !== '') {
-						// Formata para o padrão que o backend espera
-						filtros.dataInicio = dataInicio;
-					}
+        error: handleDataTableError,
+        complete: function () {
+          if (typeof esconderLoading === "function") esconderLoading();
+        },
+      },
 
-					// Data Fim (formato yyyy-MM-dd)
-					const dataFim = $('#filtroDataFim').val();
-					if (dataFim && dataFim.trim() !== '') {
-						filtros.dataFim = dataFim;
-					}
+      columns: [
+        {
+          data: null,
+          render: function (data) {
+            const iniciais = data.nome
+              ? data.nome
+                  .split(" ")
+                  .map((n) => n[0])
+                  .join("")
+                  .toUpperCase()
+                  .slice(0, 2)
+              : "??";
 
-					console.log('🔍 [Busca] Enviando filtros para backend:', filtros);
-					return filtros;
-				},
-				error: handleDataTableError,
-				complete: function() {
-					if (typeof esconderLoading === 'function') esconderLoading();
-				}
-			},
-			columns: [
-				{
-					data: null,
-					render: function(data) {
-						const iniciais = data.nome ?
-							data.nome.split(' ')
-								.map(n => n[0])
-								.join('')
-								.toUpperCase()
-								.slice(0, 2) : '??';
+            return `
+              <div class="avatar-circle" title="${data.nome || "Usuário"}">
+                ${iniciais}
+              </div>
+            `;
+          },
+        },
+        {
+          data: "nome",
+          render: function (data) {
+            return `<strong>${data || "Sem nome"}</strong>`;
+          },
+        },
+        {
+          data: "email",
+          render: function (data) {
+            return `<a href="mailto:${data}" class="text-decoration-none">${
+              data || "Não informado"
+            }</a>`;
+          },
+        },
+        {
+          data: "perfil",
+          render: function (data) {
+            const badgeClass = data === "ADMIN" ? "badge-admin" : "badge-user";
+            const icon = data === "ADMIN" ? "fa-crown" : "fa-user";
+            return `
+              <span class="badge ${badgeClass}">
+                <i class="fas ${icon}"></i>
+                ${data}
+              </span>
+            `;
+          },
+        },
+        {
+          data: "ativo",
+          render: function (data) {
+            const statusClass = data ? "status-active" : "status-inactive";
+            const statusText = data ? "Ativo" : "Inativo";
+            const icon = data ? "fa-check" : "fa-times";
+            return `
+              <span class="status ${statusClass}">
+                <i class="fas ${icon}"></i>
+                ${statusText}
+              </span>
+            `;
+          },
+        },
+        {
+          data: "dataCriacao",
+          render: function (data) {
+            if (!data) return "-";
+            const date = new Date(data);
+            return date.toLocaleDateString("pt-BR", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            });
+          },
+        },
+        {
+          data: null,
+          render: function (data) {
+            return `
+              <div class="table-actions">
+                <button class="action-btn view" title="Ver Detalhes" data-id="${data.id}">
+                  <i class="fas fa-eye"></i>
+                </button>
 
-						return `
-                        <div class="avatar-circle" title="${data.nome || 'Usuário'}">
-                            ${iniciais}
-                        </div>
-                    `;
-					}
-				},
-				{
-					data: 'nome',
-					render: function(data) {
-						return `<strong>${data || 'Sem nome'}</strong>`;
-					}
-				},
-				{
-					data: 'email',
-					render: function(data) {
-						return `<a href="mailto:${data}" class="text-decoration-none">${data || 'Não informado'}</a>`;
-					}
-				},
-				{
-					data: 'perfil',
-					render: function(data) {
-						const badgeClass = data === 'ADMIN' ? 'badge-admin' : 'badge-user';
-						const icon = data === 'ADMIN' ? 'fa-crown' : 'fa-user';
-						return `
-                        <span class="badge ${badgeClass}">
-                            <i class="fas ${icon}"></i>
-                            ${data}
-                        </span>
-                    `;
-					}
-				},
-				{
-					data: 'ativo',
-					render: function(data) {
-						const statusClass = data ? 'status-active' : 'status-inactive';
-						const statusText = data ? 'Ativo' : 'Inativo';
-						const icon = data ? 'fa-check' : 'fa-times';
-						return `
-                        <span class="status ${statusClass}">
-                            <i class="fas ${icon}"></i>
-                            ${statusText}
-                        </span>
-                    `;
-					}
-				},
-				{
-					data: 'dataCriacao',
-					render: function(data) {
-						if (!data) return '-';
-						const date = new Date(data);
-						const options = {
-							day: '2-digit', month: '2-digit', year: 'numeric',
-							hour: '2-digit', minute: '2-digit'
-						};
-						return date.toLocaleDateString('pt-BR', options);
-					}
-				},
-				{
-					data: null,
-					render: function(data) {
-						const isAdminNaLinha = data.perfil === 'ADMIN';
+                <button class="action-btn ${data.ativo ? "delete" : "edit"}"
+                        title="${data.ativo ? "Desativar" : "Reativar"}"
+                        data-id="${data.id}"
+                        data-ativo="${data.ativo}"
+                        ${!usuarioLogadoIsAdmin ? "disabled" : ""}>
+                  <i class="fas ${data.ativo ? "fa-user-slash" : "fa-user-check"}"></i>
+                </button>
+              </div>
+            `;
+          },
+        },
+      ],
 
-						return `
-                        <div class="table-actions">
-                            <button class="action-btn view" 
-                                    title="Ver Detalhes" 
-                                    data-id="${data.id}">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                            <button class="action-btn ${data.ativo ? 'delete' : 'edit'}" 
-                                    title="${data.ativo ? 'Desativar' : 'Reativar'}" 
-                                    data-id="${data.id}" 
-                                    data-ativo="${data.ativo}"
-                                    ${!usuarioLogadoIsAdmin ? 'disabled' : ''}>
-                                <i class="fas ${data.ativo ? 'fa-user-slash' : 'fa-user-check'}"></i>
-                            </button>
-                        </div>
-                    `;
-					}
-				}
-			],
-			language: {
-				url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/pt-BR.json'
-			},
-			pageLength: 10,
-			lengthMenu: [[5, 10, 25, 50, -1], [5, 10, 25, 50, "Todos"]],
-			responsive: true,
-			order: [[1, 'asc']],
-			dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>><"row"<"col-sm-12"tr>><"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
-			initComplete: function() {
-				if (typeof atualizarContadorResultados === 'function') {
-					atualizarContadorResultados();
-				}
-				atualizarTagsFiltro(); // Atualiza tags inicialmente
-			},
-			drawCallback: function() {
-				if (typeof atualizarContadorResultados === 'function') {
-					atualizarContadorResultados();
-				}
-			}
-		});
-	}
+      language: { url: "https://cdn.datatables.net/plug-ins/1.13.4/i18n/pt-BR.json" },
+      pageLength: 10,
+      lengthMenu: [
+        [5, 10, 25, 50, -1],
+        [5, 10, 25, 50, "Todos"],
+      ],
+      responsive: true,
+      order: [[1, "asc"]],
+      dom:
+        '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>' +
+        '<"row"<"col-sm-12"tr>>' +
+        '<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
 
-	/**
-	 * Configura todos os eventos da página
-	 */
-	function configurarEventos() {
-		// Eventos de filtro - agora recarregam os dados do backend
-		$('#filtroNome').on('input', debounce(function() {
-			atualizarTagsFiltro();
-			recarregarDadosComDelay();
-		}, 500));
+      initComplete: function () {
+        atualizarContadorResultados();
+        atualizarTagsFiltro();
+      },
+      drawCallback: function () {
+        atualizarContadorResultados();
+      },
+    });
+  }
 
-		$('#filtroEmail').on('input', debounce(function() {
-			atualizarTagsFiltro();
-			recarregarDadosComDelay();
-		}, 500));
+  function configurarEventos() {
+    $("#filtroNome").on(
+      "input",
+      debounce(function () {
+        atualizarTagsFiltro();
+        recarregarDadosComDelay();
+      }, 500)
+    );
 
-		$('#filtroPerfil').on('change', function() {
-			atualizarTagsFiltro();
-			recarregarDados();
-		});
+    $("#filtroEmail").on(
+      "input",
+      debounce(function () {
+        atualizarTagsFiltro();
+        recarregarDadosComDelay();
+      }, 500)
+    );
 
-		$('#filtroStatus').on('change', function() {
-			atualizarTagsFiltro();
-			recarregarDados();
-		});
+    $("#filtroPerfil").on("change", function () {
+      atualizarTagsFiltro();
+      recarregarDados();
+    });
 
-		$('#filtroDataInicio, #filtroDataFim').on('change', function() {
-			atualizarTagsFiltro();
-			recarregarDados();
-		});
+    $("#filtroStatus").on("change", function () {
+      atualizarTagsFiltro();
+      recarregarDados();
+    });
 
-		// Eventos dos botões
-		$('#btnAplicarFiltros').on('click', function() {
-			recarregarDados();
-			mostrarNotificacao('Filtros aplicados com sucesso', 'success');
-		});
+    $("#filtroDataInicio, #filtroDataFim").on("change", function () {
+      atualizarTagsFiltro();
+      recarregarDados();
+    });
 
-		$('#btnLimpar').on('click', limparFiltros);
-		$('#btnRecarregar').on('click', recarregarDados);
+    $("#btnAplicarFiltros").on("click", function () {
+      recarregarDados();
+      mostrarNotificacao("Filtros aplicados com sucesso", "success");
+    });
 
-		// Eventos de ações na tabela
-		$(document).on('click', '.action-btn.view', function() {
-			if (!$(this).is(':disabled')) {
-				const id = $(this).data('id');
-				carregarDetalhesUsuario(id);
-			}
-		});
+    $("#btnLimpar").on("click", limparFiltros);
+    $("#btnRecarregar").on("click", recarregarDados);
 
-		$(document).on('click', '.action-btn.edit, .action-btn.delete', function() {
-			if (!$(this).is(':disabled')) {
-				const id = $(this).data('id');
-				const ativo = $(this).data('ativo');
-				toggleStatusUsuario(id, ativo);
-			}
-		});
+    $(document).on("click", ".action-btn.view", function () {
+      if (!$(this).is(":disabled")) {
+        const id = $(this).data("id");
+        carregarDetalhesUsuario(id);
+      }
+    });
 
-		// Evento para remover tags de filtro
-		$(document).on('click', '.tag-remove', function() {
-			const filtro = $(this).data('filtro');
-			removerFiltro(filtro);
-		});
+    $(document).on("click", ".action-btn.edit, .action-btn.delete", function () {
+      if (!$(this).is(":disabled")) {
+        const id = $(this).data("id");
+        const ativo = $(this).data("ativo");
+        toggleStatusUsuario(id, ativo);
+      }
+    });
 
-		// Eventos do modal
-		$('#modalDetalhes').on('click', function(e) {
-			if (e.target === this) {
-				fecharModal();
-			}
-		});
+    $(document).on("click", ".tag-remove", function () {
+      const filtro = $(this).data("filtro");
+      removerFiltro(filtro);
+    });
 
-		// Atalhos de teclado
-		$(document).on('keydown', function(e) {
-			// ESC fecha modal
-			if (e.key === 'Escape' && $('#modalDetalhes').hasClass('active')) {
-				fecharModal();
-			}
+    $("#modalDetalhes").on("click", function (e) {
+      if (e.target === this) fecharModal();
+    });
 
-			// Ctrl + F foca no primeiro filtro
-			if (e.ctrlKey && e.key === 'f') {
-				e.preventDefault();
-				$('#filtroNome').focus();
-			}
-		});
-	}
+    $(document).on("keydown", function (e) {
+      if (e.key === "Escape" && $("#modalDetalhes").hasClass("active")) fecharModal();
+      if (e.ctrlKey && e.key === "f") {
+        e.preventDefault();
+        $("#filtroNome").focus();
+      }
+    });
+  }
 
-	/**
-	 * Remove um filtro específico
-	 */
-	function removerFiltro(tipo) {
-		// Limpa o campo correspondente
-		switch (tipo) {
-			case 'nome':
-				$('#filtroNome').val('');
-				break;
-			case 'email':
-				$('#filtroEmail').val('');
-				break;
-			case 'perfil':
-				$('#filtroPerfil').val('');
-				break;
-			case 'status':
-				$('#filtroStatus').val('');
-				break;
-			case 'dataInicio':
-				$('#filtroDataInicio').val('');
-				break;
-			case 'dataFim':
-				$('#filtroDataFim').val('');
-				break;
-		}
+  function removerFiltro(tipo) {
+    switch (tipo) {
+      case "nome":
+        $("#filtroNome").val("");
+        break;
+      case "email":
+        $("#filtroEmail").val("");
+        break;
+      case "perfil":
+        $("#filtroPerfil").val("");
+        break;
+      case "status":
+        $("#filtroStatus").val("");
+        break;
+      case "dataInicio":
+        $("#filtroDataInicio").val("");
+        break;
+      case "dataFim":
+        $("#filtroDataFim").val("");
+        break;
+    }
+    atualizarTagsFiltro();
+    recarregarDados();
+  }
 
-		atualizarTagsFiltro();
-		recarregarDados();
-	}
+  function limparFiltros() {
+    $("#filtroNome, #filtroEmail, #filtroDataInicio, #filtroDataFim").val("");
+    $("#filtroPerfil, #filtroStatus").val("");
+    atualizarTagsFiltro();
+    recarregarDados();
+    mostrarNotificacao("Filtros limpos com sucesso", "info");
+  }
 
-	/**
-	 * Limpa todos os filtros
-	 */
-	function limparFiltros() {
-		// Limpa campos
-		$('#filtroNome, #filtroEmail, #filtroDataInicio, #filtroDataFim').val('');
-		$('#filtroPerfil, #filtroStatus').val('');
+  function atualizarTagsFiltro() {
+    const container = $("#filterTags");
+    const countEl = $("#filterCount");
 
-		// Atualiza interface
-		atualizarTagsFiltro();
+    container.empty();
+    let count = 0;
 
-		// Recarrega dados sem filtros
-		recarregarDados();
+    const filtros = {
+      nome: $("#filtroNome").val(),
+      email: $("#filtroEmail").val(),
+      perfil: $("#filtroPerfil").val(),
+      status: $("#filtroStatus").val(),
+      dataInicio: $("#filtroDataInicio").val(),
+      dataFim: $("#filtroDataFim").val(),
+    };
 
-		mostrarNotificacao('Filtros limpos com sucesso', 'info');
-	}
+    if (filtros.nome && filtros.nome.trim() !== "") {
+      container.append(`
+        <div class="filter-tag">
+          <i class="fas fa-user"></i>
+          <span>Nome: ${filtros.nome}</span>
+          <i class="fas fa-times tag-remove" data-filtro="nome"></i>
+        </div>
+      `);
+      count++;
+    }
 
-	/**
-	 * Atualiza as tags de filtro na interface
-	 */
-	function atualizarTagsFiltro() {
-		const container = $('#filterTags');
-		const countEl = $('#filterCount');
+    if (filtros.email && filtros.email.trim() !== "") {
+      container.append(`
+        <div class="filter-tag">
+          <i class="fas fa-envelope"></i>
+          <span>Email: ${filtros.email}</span>
+          <i class="fas fa-times tag-remove" data-filtro="email"></i>
+        </div>
+      `);
+      count++;
+    }
 
-		container.empty();
+    if (filtros.perfil && filtros.perfil.trim() !== "") {
+      const textoPerfil = filtros.perfil === "ADMIN" ? "Administrador" : "Usuário";
+      container.append(`
+        <div class="filter-tag">
+          <i class="fas fa-user-tag"></i>
+          <span>Perfil: ${textoPerfil}</span>
+          <i class="fas fa-times tag-remove" data-filtro="perfil"></i>
+        </div>
+      `);
+      count++;
+    }
 
-		let count = 0;
+    if (filtros.status && filtros.status.trim() !== "") {
+      const textoStatus = filtros.status === "true" ? "Ativo" : "Inativo";
+      container.append(`
+        <div class="filter-tag">
+          <i class="fas fa-circle"></i>
+          <span>Status: ${textoStatus}</span>
+          <i class="fas fa-times tag-remove" data-filtro="status"></i>
+        </div>
+      `);
+      count++;
+    }
 
-		// Pega valores direto dos campos
-		const filtros = {
-			nome: $('#filtroNome').val(),
-			email: $('#filtroEmail').val(),
-			perfil: $('#filtroPerfil').val(),
-			status: $('#filtroStatus').val(),
-			dataInicio: $('#filtroDataInicio').val(),
-			dataFim: $('#filtroDataFim').val()
-		};
-
-		// Filtro de Nome
-		if (filtros.nome && filtros.nome.trim() !== '') {
-			container.append(`
-				<div class="filter-tag">
-					<i class="fas fa-user"></i>
-					<span>Nome: ${filtros.nome}</span>
-					<i class="fas fa-times tag-remove" data-filtro="nome"></i>
-				</div>
-			`);
-			count++;
-		}
-
-		// Filtro de Email
-		if (filtros.email && filtros.email.trim() !== '') {
-			container.append(`
-				<div class="filter-tag">
-					<i class="fas fa-envelope"></i>
-					<span>Email: ${filtros.email}</span>
-					<i class="fas fa-times tag-remove" data-filtro="email"></i>
-				</div>
-			`);
-			count++;
-		}
-
-		// Filtro de Perfil
-		if (filtros.perfil && filtros.perfil.trim() !== '') {
-			const textoPerfil = filtros.perfil === 'ADMIN' ? 'Administrador' : 'Usuário';
-			container.append(`
-				<div class="filter-tag">
-					<i class="fas fa-user-tag"></i>
-					<span>Perfil: ${textoPerfil}</span>
-					<i class="fas fa-times tag-remove" data-filtro="perfil"></i>
-				</div>
-			`);
-			count++;
-		}
-
-		// Filtro de Status
-		if (filtros.status && filtros.status.trim() !== '') {
-			const textoStatus = filtros.status === 'true' ? 'Ativo' : 'Inativo';
-			container.append(`
-				<div class="filter-tag">
-					<i class="fas fa-circle"></i>
-					<span>Status: ${textoStatus}</span>
-					<i class="fas fa-times tag-remove" data-filtro="status"></i>
-				</div>
-			`);
-			count++;
-		}
-
-		// Filtro de Data
-		if (filtros.dataInicio || filtros.dataFim) {
-			if (filtros.dataInicio && filtros.dataFim) {
-				const dataInicioFormatada = formatarData(filtros.dataInicio);
-				const dataFimFormatada = formatarData(filtros.dataFim);
-				container.append(`
-					<div class="filter-tag">
-						<i class="fas fa-calendar"></i>
-						<span>Data: ${dataInicioFormatada} a ${dataFimFormatada}</span>
-						<i class="fas fa-times tag-remove" data-filtro="dataInicio"></i>
-					</div>
-				`);
-			} else if (filtros.dataInicio) {
-				container.append(`
-					<div class="filter-tag">
-						<i class="fas fa-calendar"></i>
-						<span>Data a partir de: ${formatarData(filtros.dataInicio)}</span>
-						<i class="fas fa-times tag-remove" data-filtro="dataInicio"></i>
-					</div>
-				`);
-			} else if (filtros.dataFim) {
-				container.append(`
-					<div class="filter-tag">
-						<i class="fas fa-calendar"></i>
-						<span>Data até: ${formatarData(filtros.dataFim)}</span>
-						<i class="fas fa-times tag-remove" data-filtro="dataFim"></i>
-					</div>
-				`);
-			}
-			count++;
-		}
-
-		countEl.text(`${count} filtro${count !== 1 ? 's' : ''} ativo${count !== 1 ? 's' : ''}`);
-	}
-
-	/**
-	 * Recarrega os dados da tabela com delay (para inputs)
-	 */
-	function recarregarDadosComDelay() {
-		if (dataTable) {
-			clearTimeout(window.recarregarTimeout);
-			window.recarregarTimeout = setTimeout(function() {
-				dataTable.ajax.reload();
-			}, 300);
-		}
-	}
-
-	/**
-	 * Recarrega os dados da tabela
-	 */
-	function recarregarDados() {
-		if (dataTable) {
-			dataTable.ajax.reload();
-		}
-	}
-
-	/**
-	 * Atualiza o contador de resultados
-	 */
-	function atualizarContadorResultados() {
-		if (!dataTable) return;
-
-		const total = dataTable.page.info().recordsDisplay;
-		const element = $('#totalResults');
-
-		if (element.length) {
-			element.html(`<strong>${total}</strong> usuário${total !== 1 ? 's' : ''} encontrado${total !== 1 ? 's' : ''}`);
-		}
-	}
-
-	/**
-	 * Carrega detalhes de um usuário
-	 */
-	async function carregarDetalhesUsuario(id) {
-		if (!id) return;
-
-		mostrarLoading();
-
-		try {
-			const response = await fetch(`/api/usuarios/${id}`);
-
-			if (response.ok) {
-				const usuario = await response.json();
-				mostrarModalDetalhes(usuario);
-			} else {
-				throw new Error('Usuário não encontrado');
-			}
-		} catch (error) {
-			console.error('❌ [Busca] Erro ao carregar detalhes:', error);
-			mostrarNotificacao('Erro ao carregar detalhes do usuário', 'error');
-		} finally {
-			esconderLoading();
-		}
-	}
-
-	/**
-	 * Mostra modal com detalhes do usuário
-	 */
-	/**
- * Mostra modal com detalhes do usuário usando Bootstrap
- */
-	function mostrarModalDetalhes(usuario) {
-		const grid = $('#userDetailsGrid');
-
-		// Limpa conteúdo anterior
-		grid.empty();
-
-		const detalhes = [
-			{
-				label: 'Nome Completo',
-				value: usuario.nome || 'Não informado',
-				icon: 'user',
-				colClass: 'col-md-12'
-			},
-			{
-				label: 'Email',
-				value: usuario.email || 'Não informado',
-				icon: 'envelope',
-				colClass: 'col-md-6'
-			},
-			{
-				label: 'Telefone',
-				value: usuario.telefone || 'Não informado',
-				icon: 'phone',
-				colClass: 'col-md-6'
-			},
-			{
-				label: 'Perfil',
-				value: usuario.perfil || 'Não informado',
-				icon: 'user-tag',
-				colClass: 'col-md-6'
-			},
-			{
-				label: 'Status',
-				value: usuario.ativo ?
-					'<span class="badge bg-success">Ativo</span>' :
-					'<span class="badge bg-danger">Inativo</span>',
-				icon: 'circle',
-				colClass: 'col-md-6'
-			},
-			{
-				label: 'Data de Cadastro',
-				value: usuario.dataCriacao ?
-					formatarDataHora(usuario.dataCriacao) : 'Não informado',
-				icon: 'calendar-plus',
-				colClass: 'col-md-6'
-			},
-			{
-				label: 'Última Atualização',
-				value: usuario.dataAtualizacao ?
-					formatarDataHora(usuario.dataAtualizacao) : 'Não informado',
-				icon: 'calendar-check',
-				colClass: 'col-md-6'
-			}
-		];
-
-		// Cria as linhas com os detalhes
-		detalhes.forEach((detalhe) => {
-			grid.append(`
-            <div class="${detalhe.colClass} mb-3">
-                <div class="card h-100 border-0 shadow-sm">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center mb-2">
-                            <div class="icon-circle bg-primary me-3">
-                                <i class="fas fa-${detalhe.icon} text-white"></i>
-                            </div>
-                            <h6 class="card-title mb-0 text-muted">${detalhe.label}</h6>
-                        </div>
-                        <p class="card-text fs-5 fw-semibold">${detalhe.value}</p>
-                    </div>
-                </div>
-            </div>
+    if (filtros.dataInicio || filtros.dataFim) {
+      if (filtros.dataInicio && filtros.dataFim) {
+        container.append(`
+          <div class="filter-tag">
+            <i class="fas fa-calendar"></i>
+            <span>Data: ${formatarData(filtros.dataInicio)} a ${formatarData(filtros.dataFim)}</span>
+            <i class="fas fa-times tag-remove" data-filtro="dataInicio"></i>
+          </div>
         `);
-		});
+      } else if (filtros.dataInicio) {
+        container.append(`
+          <div class="filter-tag">
+            <i class="fas fa-calendar"></i>
+            <span>Data a partir de: ${formatarData(filtros.dataInicio)}</span>
+            <i class="fas fa-times tag-remove" data-filtro="dataInicio"></i>
+          </div>
+        `);
+      } else if (filtros.dataFim) {
+        container.append(`
+          <div class="filter-tag">
+            <i class="fas fa-calendar"></i>
+            <span>Data até: ${formatarData(filtros.dataFim)}</span>
+            <i class="fas fa-times tag-remove" data-filtro="dataFim"></i>
+          </div>
+        `);
+      }
+      count++;
+    }
 
-		// Atualiza o título do modal
-		$('#modalDetalhesLabel').html(`
-        <i class="fas fa-user-circle me-2"></i>
-        ${usuario.nome || 'Detalhes do Usuário'}
+    countEl.text(`${count} filtro${count !== 1 ? "s" : ""} ativo${count !== 1 ? "s" : ""}`);
+  }
+
+  function recarregarDadosComDelay() {
+    if (!dataTable) return;
+    clearTimeout(window.recarregarTimeout);
+    window.recarregarTimeout = setTimeout(function () {
+      dataTable.ajax.reload();
+    }, 300);
+  }
+
+  function recarregarDados() {
+    if (dataTable) dataTable.ajax.reload();
+  }
+
+  function atualizarContadorResultados() {
+    if (!dataTable) return;
+    const total = dataTable.page.info().recordsDisplay;
+    const element = $("#totalResults");
+    if (element.length) {
+      element.html(
+        `<strong>${total}</strong> usuário${total !== 1 ? "s" : ""} encontrado${total !== 1 ? "s" : ""}`
+      );
+    }
+  }
+
+  async function carregarDetalhesUsuario(id) {
+    if (!id) return;
+    mostrarLoading();
+
+    try {
+      const response = await fetch(`/api/usuarios/${id}`);
+      if (response.ok) {
+        const usuario = await response.json();
+        mostrarModalDetalhes(usuario);
+      } else if (response.status === 401 || response.status === 403) {
+        mostrarNotificacao("Sessão expirada. Redirecionando...", "error");
+        setTimeout(() => (window.location.href = "/auth/login?error=expired"), 900);
+      } else {
+        throw new Error("Usuário não encontrado");
+      }
+    } catch (error) {
+      console.error("❌ [Busca] Erro ao carregar detalhes:", error);
+      mostrarNotificacao("Erro ao carregar detalhes do usuário", "error");
+    } finally {
+      esconderLoading();
+    }
+  }
+
+  function mostrarModalDetalhes(usuario) {
+    const grid = $("#userDetailsGrid");
+    grid.empty();
+
+    const detalhes = [
+      { label: "Nome Completo", value: usuario.nome || "Não informado", icon: "user", colClass: "col-md-12" },
+      { label: "Email", value: usuario.email || "Não informado", icon: "envelope", colClass: "col-md-6" },
+      { label: "Telefone", value: usuario.telefone || "Não informado", icon: "phone", colClass: "col-md-6" },
+      { label: "Perfil", value: usuario.perfil || "Não informado", icon: "user-tag", colClass: "col-md-6" },
+      {
+        label: "Status",
+        value: usuario.ativo ? '<span class="badge bg-success">Ativo</span>' : '<span class="badge bg-danger">Inativo</span>',
+        icon: "circle",
+        colClass: "col-md-6",
+      },
+      {
+        label: "Data de Cadastro",
+        value: usuario.dataCriacao ? formatarDataHora(usuario.dataCriacao) : "Não informado",
+        icon: "calendar-plus",
+        colClass: "col-md-6",
+      },
+      {
+        label: "Última Atualização",
+        value: usuario.dataAtualizacao ? formatarDataHora(usuario.dataAtualizacao) : "Não informado",
+        icon: "calendar-check",
+        colClass: "col-md-6",
+      },
+    ];
+
+    detalhes.forEach((detalhe) => {
+      grid.append(`
+        <div class="${detalhe.colClass} mb-3">
+          <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body">
+              <div class="d-flex align-items-center mb-2">
+                <div class="icon-circle bg-primary me-3">
+                  <i class="fas fa-${detalhe.icon} text-white"></i>
+                </div>
+                <h6 class="card-title mb-0 text-muted">${detalhe.label}</h6>
+              </div>
+              <p class="card-text fs-5 fw-semibold">${detalhe.value}</p>
+            </div>
+          </div>
+        </div>
+      `);
+    });
+
+    $("#modalDetalhesLabel").html(`
+      <i class="fas fa-user-circle me-2"></i>
+      ${usuario.nome || "Detalhes do Usuário"}
     `);
 
-		// Mostra o modal usando Bootstrap
-		const modal = new bootstrap.Modal(document.getElementById('modalDetalhes'));
-		modal.show();
-	}
+    const modal = new bootstrap.Modal(document.getElementById("modalDetalhes"));
+    modal.show();
+  }
 
-	/**
-	 * Alterna status de um usuário
-	 */
-	async function toggleStatusUsuario(id, ativoAtual) {
-		if (!id) return;
+  async function toggleStatusUsuario(id, ativoAtual) {
+    if (!id) return;
 
-		const confirmacao = confirm(
-			`Deseja realmente ${ativoAtual ? 'desativar' : 'reativar'} este usuário?`
-		);
+    const confirmacao = confirm(
+      `Deseja realmente ${ativoAtual ? "desativar" : "reativar"} este usuário?`
+    );
+    if (!confirmacao) return;
 
-		if (!confirmacao) return;
+    mostrarLoading();
 
-		mostrarLoading();
+    try {
+      const endpoint = `/api/usuarios/${id}/${ativoAtual ? "desativar" : "reativar"}`;
+      const response = await fetch(endpoint, { method: "PATCH" });
 
-		try {
-			const endpoint = `/api/usuarios/${id}/${ativoAtual ? 'desativar' : 'reativar'}`;
-			const response = await fetch(endpoint, { method: 'PATCH' });
+      if (response.ok) {
+        dataTable.ajax.reload();
+        mostrarNotificacao(
+          `Usuário ${ativoAtual ? "desativado" : "reativado"} com sucesso!`,
+          "success"
+        );
+      } else if (response.status === 401 || response.status === 403) {
+        mostrarNotificacao("Sessão expirada. Redirecionando...", "error");
+        setTimeout(() => (window.location.href = "/auth/login?error=expired"), 900);
+      } else {
+        throw new Error("Erro ao atualizar usuário");
+      }
+    } catch (error) {
+      console.error("❌ [Busca] Erro ao atualizar status:", error);
+      mostrarNotificacao("Erro ao atualizar usuário", "error");
+    } finally {
+      esconderLoading();
+    }
+  }
 
-			if (response.ok) {
-				dataTable.ajax.reload();
-				mostrarNotificacao(
-					`Usuário ${ativoAtual ? 'desativado' : 'reativado'} com sucesso!`,
-					'success'
-				);
-			} else {
-				throw new Error('Erro ao atualizar usuário');
-			}
-		} catch (error) {
-			console.error('❌ [Busca] Erro ao atualizar status:', error);
-			mostrarNotificacao('Erro ao atualizar usuário', 'error');
-		} finally {
-			esconderLoading();
-		}
-	}
+  function verificarPermissoes() {
+    const isAdmin = typeof window.isAdmin === "function" ? window.isAdmin() : false;
+    if (!isAdmin) {
+      $(".btn-success")
+        .prop("disabled", true)
+        .attr("title", "Apenas administradores podem criar usuários");
+    }
+  }
 
-	/**
-	 * Verifica permissões do usuário
-	 */
-	function verificarPermissoes() {
-		const isAdmin = window.isAdmin ? window.isAdmin() : false;
+  function aplicarEstilosIniciais() {
+    setTimeout(() => {
+      $(".main-card").addClass("loaded");
+    }, 100);
+  }
 
-		if (!isAdmin) {
-			$('.btn-success').prop('disabled', true)
-				.attr('title', 'Apenas administradores podem criar usuários');
-		}
-	}
+  function mostrarLoading() {
+    if (!isLoading) {
+      isLoading = true;
+      $("#loadingOverlay").addClass("active");
+    }
+  }
 
-	/**
-	 * Aplica estilos iniciais
-	 */
-	function aplicarEstilosIniciais() {
-		setTimeout(() => {
-			$('.main-card').addClass('loaded');
-		}, 100);
-	}
+  function esconderLoading() {
+    isLoading = false;
+    $("#loadingOverlay").removeClass("active");
+  }
 
-	/**
-	 * Funções auxiliares
-	 */
-	function mostrarLoading() {
-		if (!isLoading) {
-			isLoading = true;
-			$('#loadingOverlay').addClass('active');
-		}
-	}
+  function mostrarNotificacao(mensagem, tipo = "info") {
+    const tipos = {
+      success: { class: "alert-success", icon: "check-circle" },
+      error: { class: "alert-danger", icon: "exclamation-circle" },
+      info: { class: "alert-info", icon: "info-circle" },
+      warning: { class: "alert-warning", icon: "exclamation-triangle" },
+    };
 
-	function esconderLoading() {
-		isLoading = false;
-		$('#loadingOverlay').removeClass('active');
-	}
+    const config = tipos[tipo] || tipos.info;
 
-	function mostrarNotificacao(mensagem, tipo = 'info') {
-		const tipos = {
-			success: { class: 'alert-success', icon: 'check-circle' },
-			error: { class: 'alert-danger', icon: 'exclamation-circle' },
-			info: { class: 'alert-info', icon: 'info-circle' },
-			warning: { class: 'alert-warning', icon: 'exclamation-triangle' }
-		};
+    $(".alert-notification").remove();
 
-		const config = tipos[tipo] || tipos.info;
+    const notificacao = $(`
+      <div class="alert ${config.class} alert-notification alert-dismissible fade show position-fixed"
+           style="top: 20px; right: 20px; z-index: 1000; min-width: 300px;">
+        <i class="fas fa-${config.icon} me-2"></i>
+        ${mensagem}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    `);
 
-		$('.alert-notification').remove();
+    $("body").append(notificacao);
 
-		const notificacao = $(`
-            <div class="alert ${config.class} alert-notification alert-dismissible fade show position-fixed" 
-                 style="top: 20px; right: 20px; z-index: 1000; min-width: 300px;">
-                <i class="fas fa-${config.icon} me-2"></i>
-                ${mensagem}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        `);
+    setTimeout(() => {
+      notificacao.alert("close");
+    }, 5000);
+  }
 
-		$('body').append(notificacao);
+  function formatarData(dataString) {
+    if (!dataString) return "";
+    if (dataString.includes("-")) {
+      const [ano, mes, dia] = dataString.split("-");
+      return `${dia}/${mes}/${ano}`;
+    }
+    return new Date(dataString).toLocaleDateString("pt-BR");
+  }
 
-		setTimeout(() => {
-			notificacao.alert('close');
-		}, 5000);
-	}
+  function formatarDataHora(dataString) {
+    if (!dataString) return "";
+    return new Date(dataString).toLocaleString("pt-BR");
+  }
 
-	function formatarData(dataString) {
-		if (!dataString) return '';
-		// Se já for uma data no formato yyyy-MM-dd
-		if (dataString.includes('-')) {
-			const [ano, mes, dia] = dataString.split('-');
-			return `${dia}/${mes}/${ano}`;
-		}
-		return new Date(dataString).toLocaleDateString('pt-BR');
-	}
+  function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
+  }
 
-	function formatarDataHora(dataString) {
-		if (!dataString) return '';
-		return new Date(dataString).toLocaleString('pt-BR');
-	}
+  function handleDataTableError(xhr, error, thrown) {
+    console.error("❌ [Busca] Erro no DataTable:", error, thrown);
 
-	function debounce(func, wait) {
-		let timeout;
-		return function executedFunction(...args) {
-			const later = () => {
-				clearTimeout(timeout);
-				func(...args);
-			};
-			clearTimeout(timeout);
-			timeout = setTimeout(later, wait);
-		};
-	}
+    if (xhr.status === 401 || xhr.status === 403) {
+      mostrarNotificacao("Sessão expirada. Redirecionando...", "error");
+      setTimeout(() => {
+        window.location.href = "/auth/login?error=expired";
+      }, 1200);
+    } else {
+      mostrarNotificacao("Erro ao carregar dados dos usuários", "error");
+    }
+  }
 
-	function handleDataTableError(xhr, error, thrown) {
-		console.error('❌ [Busca] Erro no DataTable:', error, thrown);
+  // Fechar modal (compat)
+  window.fecharModal = function () {
+    $("#modalDetalhes").removeClass("active");
+    $("body").css("overflow", "auto");
+  };
 
-		if (xhr.status === 401) {
-			mostrarNotificacao('Sessão expirada. Redirecionando...', 'error');
-			setTimeout(() => {
-				window.location.href = '/admin/dashboard';
-			}, 2000);
-		} else {
-			mostrarNotificacao('Erro ao carregar dados dos usuários', 'error');
-		}
-	}
+  window.initBuscaAvancada = initBuscaAvancada;
 
-	// Fechar modal (função global)
-	window.fecharModal = function() {
-		$('#modalDetalhes').removeClass('active');
-		$('body').css('overflow', 'auto');
-	};
-
-	// Exportar para uso global
-	window.initBuscaAvancada = initBuscaAvancada;
-
-	console.log('✅ [Busca] Módulo de busca carregado');
-
+  console.log("✅ [Busca] Módulo de busca carregado (cookie-mode)");
 })();

@@ -1,9 +1,11 @@
 package com.multi_amigos.util;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
 import javax.crypto.SecretKey;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import com.multi_amigos.model.Usuario;
@@ -15,23 +17,38 @@ import io.jsonwebtoken.security.Keys;
 @Component
 public class JwtUtil {
 
-    private final String SECRET_STRING = "minha-chave-secreta-muito-mais-longa-agora-para-seguranca-256-bits";
-    private final SecretKey SECRET_KEY;
-    private final long EXPIRATION = 86400000; // 1 dia
+    // ✅ ideal: configure isso no application.properties / env
+    // app.jwt.secret=... (mínimo 32 bytes para HS256)
+    @Value("${app.jwt.secret:minha-chave-secreta-muito-mais-longa-agora-para-seguranca-256-bits}")
+    private String secret;
 
-    public JwtUtil() {
-        this.SECRET_KEY = Keys.hmacShaKeyFor(SECRET_STRING.getBytes());
+    @Value("${app.jwt.issuer:multi-amigos}")
+    private String issuer;
+
+    @Value("${app.jwt.audience:web}")
+    private String audience;
+
+    // 1 dia (alinha com cookie maxAge=1 dia)
+    private static final long EXPIRATION_MS = 86_400_000L;
+
+    private SecretKey getSecretKey() {
+        // garante charset
+        return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
-    // ✅ Gera token COM role
     public String generateToken(Usuario usuario) {
+        Date now = new Date();
+        Date exp = new Date(now.getTime() + EXPIRATION_MS);
+
         return Jwts.builder()
+                .setIssuer(issuer)
+                .setAudience(audience)
                 .setSubject(usuario.getEmail())
-                .claim("role", usuario.getPerfil().name()) // ✅ Adiciona role no token
-                .claim("nome", usuario.getNome()) // ✅ Adiciona nome
-                .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION))
-                .signWith(SECRET_KEY)
+                .claim("role", usuario.getPerfil().name())
+                .claim("nome", usuario.getNome())
+                .setIssuedAt(now)
+                .setExpiration(exp)
+                .signWith(getSecretKey())
                 .compact();
     }
 
@@ -39,19 +56,21 @@ public class JwtUtil {
         return extractAllClaims(token).getSubject();
     }
 
-    // ✅ Extrai role do token
     public String extractRole(String token) {
         return extractAllClaims(token).get("role", String.class);
     }
 
-    // ✅ Extrai nome do token
     public String extractNome(String token) {
         return extractAllClaims(token).get("nome", String.class);
     }
 
     private Claims extractAllClaims(String token) {
         return Jwts.parserBuilder()
-                .setSigningKey(SECRET_KEY)
+                .setSigningKey(getSecretKey())
+                // opcional: 60s tolerância
+                .setAllowedClockSkewSeconds(60)
+                .requireIssuer(issuer)
+                .requireAudience(audience)
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
@@ -59,10 +78,7 @@ public class JwtUtil {
 
     public boolean validateToken(String token) {
         try {
-            Jwts.parserBuilder()
-                .setSigningKey(SECRET_KEY)
-                .build()
-                .parseClaimsJws(token);
+            extractAllClaims(token);
             return true;
         } catch (Exception e) {
             return false;

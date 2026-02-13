@@ -2,31 +2,34 @@ package com.multi_amigos.DTO;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 
 public class CadastroUsuarioDTO {
 
-	@NotBlank
+	@NotBlank(message = "Nome é obrigatório")
 	private String nome;
 
-	@NotBlank
-	@Email
+	@NotBlank(message = "Email é obrigatório")
+	@Email(message = "Email inválido")
 	private String email;
 
-	@Pattern(regexp = "^(\\(\\d{2}\\)\\d{4,5}-\\d{4})?$", message = "Telefone deve estar no formato (DD)XXXXX-XXXX ou (DD)XXXX-XXXX")
+	/**
+	 * Mesma regra do cadastro público, pra não ficar inconsistente. Se preenchido,
+	 * precisa ter 10 a 13 dígitos no total.
+	 */
+	@Pattern(regexp = "^(\\D*\\d\\D*){10,13}$|^$", message = "Telefone inválido. Informe com DDD (10/11 dígitos) ou com DDI+DDD (12/13 dígitos).")
 	private String telefone;
 
-	@NotBlank
+	@NotBlank(message = "Senha é obrigatória")
 	private String senha;
 
-	private Long usuarioPaiId; // pode ser null SOMENTE para o primeiro admin
+	/**
+	 * Pode ser null SOMENTE para o primeiro admin (como você já trata no service).
+	 */
+	private Long usuarioPaiId;
 
-	// ===== Construtores =====
 	public CadastroUsuarioDTO() {
 	}
-
-	// ===== Getters e Setters =====
 
 	public String getNome() {
 		return nome;
