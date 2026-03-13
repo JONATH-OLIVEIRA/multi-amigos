@@ -43,7 +43,7 @@ public class Usuario {
      *
      * Se você não usa DDI, pode manter só 10-11.
      */
-    @Column(name = "telefone", unique = true, length = 13)
+    @Column(name = "telefone", unique = true, length = 20)
     private String telefone;
 
     @Column(nullable = false)
