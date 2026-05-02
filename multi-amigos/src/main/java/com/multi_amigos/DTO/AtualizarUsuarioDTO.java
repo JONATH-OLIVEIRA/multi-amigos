@@ -10,9 +10,10 @@ public class AtualizarUsuarioDTO {
     @Email(message = "Email inválido")
     private String email;
     
+    // 🔥 ALTERADO: Aceita apenas números (10 ou 11 dígitos) ou vazio
     @Pattern(
-        regexp = "^(\\(\\d{2}\\)\\d{4,5}-\\d{4})?$",
-        message = "Telefone deve estar no formato (DD)XXXXX-XXXX ou (DD)XXXX-XXXX"
+        regexp = "^(\\d{10,11})?$",
+        message = "Telefone deve conter 10 ou 11 dígitos numéricos"
     )
     private String telefone;
     
@@ -24,6 +25,15 @@ public class AtualizarUsuarioDTO {
 
     // Construtores
     public AtualizarUsuarioDTO() {}
+    
+    public AtualizarUsuarioDTO(String nome, String email, String telefone, String senha, Long usuarioPaiId, Boolean ativo) {
+        this.nome = nome;
+        this.email = email;
+        setTelefone(telefone); // Usa o setter para normalizar
+        this.senha = senha;
+        this.usuarioPaiId = usuarioPaiId;
+        this.ativo = ativo;
+    }
     
     // Getters e Setters
     public String getNome() {
@@ -46,8 +56,19 @@ public class AtualizarUsuarioDTO {
         return telefone;
     }
     
+    // 🔥 Setter com normalização: remove qualquer caractere não numérico
     public void setTelefone(String telefone) {
-        this.telefone = telefone;
+        if (telefone != null && !telefone.trim().isEmpty()) {
+            // Remove tudo que não for dígito (parênteses, espaços, hífens, etc)
+            this.telefone = telefone.replaceAll("\\D", "");
+            
+            // Se após a limpeza ficar vazio, define como null
+            if (this.telefone.isEmpty()) {
+                this.telefone = null;
+            }
+        } else {
+            this.telefone = null;
+        }
     }
     
     public String getSenha() {
@@ -72,5 +93,44 @@ public class AtualizarUsuarioDTO {
     
     public void setAtivo(Boolean ativo) {
         this.ativo = ativo;
+    }
+    
+    // 🔥 Método utilitário para verificar se o telefone é válido
+    public boolean isTelefoneValido() {
+        return telefone != null && (telefone.length() == 10 || telefone.length() == 11);
+    }
+    
+    // 🔥 Método utilitário para formatar o telefone para exibição (se necessário)
+    public String getTelefoneFormatado() {
+        if (telefone == null || telefone.isEmpty()) {
+            return "";
+        }
+        
+        if (telefone.length() == 10) {
+            // Formato: (DD)XXXX-XXXX
+            return String.format("(%s)%s-%s",
+                telefone.substring(0, 2),
+                telefone.substring(2, 6),
+                telefone.substring(6, 10));
+        } else if (telefone.length() == 11) {
+            // Formato: (DD)XXXXX-XXXX
+            return String.format("(%s)%s-%s",
+                telefone.substring(0, 2),
+                telefone.substring(2, 7),
+                telefone.substring(7, 11));
+        }
+        
+        return telefone;
+    }
+    
+    @Override
+    public String toString() {
+        return "AtualizarUsuarioDTO{" +
+                "nome='" + nome + '\'' +
+                ", email='" + email + '\'' +
+                ", telefone='" + telefone + '\'' +
+                ", usuarioPaiId=" + usuarioPaiId +
+                ", ativo=" + ativo +
+                '}';
     }
 }
