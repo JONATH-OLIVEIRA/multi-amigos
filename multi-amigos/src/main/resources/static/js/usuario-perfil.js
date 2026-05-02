@@ -13,6 +13,42 @@ class UsuarioPerfilManager {
 		this._abortController = null;
 	}
 
+	// 🔥 FUNÇÃO PARA NORMALIZAR TELEFONE (APENAS NÚMEROS)
+	normalizeTelefone(telefone) {
+		if (!telefone) return '';
+		// Remove todos os caracteres não numéricos
+		return telefone.replace(/\D/g, '');
+	}
+
+	// 🔥 FUNÇÃO PARA APLICAR MÁSCARA DE TELEFONE
+	aplicarMascaraTelefone(valor) {
+		let numbers = valor.replace(/\D/g, '');
+		let formatted = '';
+
+		if (numbers.length > 0) {
+			// DDD
+			if (numbers.length <= 2) {
+				formatted = `(${numbers}`;
+			} 
+			// DDD + primeiros dígitos
+			else if (numbers.length <= 7) {
+				formatted = `(${numbers.substring(0, 2)}) ${numbers.substring(2)}`;
+			} 
+			// DDD + 8 ou 9 dígitos + traço
+			else {
+				if (numbers.length <= 10) {
+					// Telefone fixo: (11) 9999-9999
+					formatted = `(${numbers.substring(0, 2)}) ${numbers.substring(2, 6)}-${numbers.substring(6, 10)}`;
+				} else {
+					// Celular: (11) 99999-9999
+					formatted = `(${numbers.substring(0, 2)}) ${numbers.substring(2, 7)}-${numbers.substring(7, 11)}`;
+				}
+			}
+		}
+
+		return formatted;
+	}
+
 	async carregarMeuPerfil() {
 		if (!this.perfilContainer) {
 			this.perfilContainer = document.getElementById('perfilContainer');
@@ -47,12 +83,62 @@ class UsuarioPerfilManager {
 
 			this.renderizarPerfil(dados, estatisticas, Array.isArray(hierarquia) ? hierarquia : []);
 			this.configurarEventos();
+			
+			// 🔥 APLICA MÁSCARA DE TELEFONE APÓS RENDERIZAR
+			this.aplicarMascaraNoCampoTelefone();
 		} catch (err) {
 			if (err?.name === 'AbortError') return;
 			console.error('❌ Erro ao carregar perfil:', err);
 			this.mostrarErro('Não foi possível carregar seus dados.');
 		} finally {
 			this._loading = false;
+		}
+	}
+
+	// 🔥 FUNÇÃO PARA APLICAR MÁSCARA NO CAMPO DE TELEFONE
+	aplicarMascaraNoCampoTelefone() {
+		const telefoneInput = document.getElementById('inputTelefone');
+		if (!telefoneInput) return;
+
+		// Verifica se jQuery Mask está disponível
+		if (typeof $ !== 'undefined' && $.fn && $.fn.mask) {
+			// Remove máscara anterior se existir
+			if (telefoneInput._mask) {
+				$(telefoneInput).unmask();
+			}
+			
+			// Aplica nova máscara
+			$(telefoneInput).mask('(00) 00000-0000', {
+				placeholder: '(00) 00000-0000',
+				onKeyPress: (telefone, event, currentField, options) => {
+					const digits = telefone.replace(/\D/g, '').length;
+					if (digits <= 10) {
+						$(telefoneInput).mask('(00) 0000-00009', options);
+					} else {
+						$(telefoneInput).mask('(00) 00000-0000', options);
+					}
+				}
+			});
+			
+			// Aplica o valor atual com máscara
+			const valorAtual = telefoneInput.value;
+			if (valorAtual && !valorAtual.includes('(')) {
+				const apenasNumeros = this.normalizeTelefone(valorAtual);
+				if (apenasNumeros.length >= 10) {
+					telefoneInput.value = this.aplicarMascaraTelefone(apenasNumeros);
+				}
+			}
+		} else {
+			// Fallback manual
+			telefoneInput.addEventListener('input', (e) => {
+				let value = e.target.value;
+				let numbers = value.replace(/\D/g, '');
+				let formatted = this.aplicarMascaraTelefone(numbers);
+				
+				if (formatted !== value) {
+					e.target.value = formatted;
+				}
+			});
 		}
 	}
 
@@ -86,6 +172,11 @@ class UsuarioPerfilManager {
 			? '<span class="badge bg-danger">ADMIN</span>'
 			: '<span class="badge bg-primary">USUÁRIO</span>';
 
+		// 🔥 Formata o telefone com máscara para exibição
+		const telefoneFormatado = dados?.telefone 
+			? this.aplicarMascaraTelefone(this.normalizeTelefone(dados.telefone))
+			: '';
+
 		let html = `
         <div class="row">
             <div class="col-md-6">
@@ -107,7 +198,8 @@ class UsuarioPerfilManager {
 
                             <div class="col-md-6 mb-3">
                                 <label class="form-label"><strong>Telefone</strong></label>
-                                <input type="text" class="form-control" id="inputTelefone" value="${this.escapeHtml(dados?.telefone || '')}" placeholder="(11) 99999-9999">
+                                <input type="tel" class="form-control" id="inputTelefone" value="${this.escapeHtml(telefoneFormatado || '')}" placeholder="(11) 99999-9999">
+                                <div class="form-text">Formato: (DD) 99999-9999</div>
                             </div>
 
                             <div class="col-12 mb-3">
@@ -239,15 +331,20 @@ class UsuarioPerfilManager {
 				const filhoStatus = filho.ativo
 					? '<span class="badge bg-success">Ativo</span>'
 					: '<span class="badge bg-secondary">Inativo</span>';
+				
+				// 🔥 Formata o telefone do filho com máscara
+				const telefoneFilho = filho.telefone 
+					? this.aplicarMascaraTelefone(this.normalizeTelefone(filho.telefone))
+					: 'Não informado';
 
 				html += `
                 <tr>
                     <td>${this.escapeHtml(filho.nome)}</td>
                     <td>${this.escapeHtml(filho.email)}</td>
-                    <td>${this.escapeHtml(filho.telefone || 'Não informado')}</td>
+                    <td>${this.escapeHtml(telefoneFilho)}</td>
                     <td>${filhoStatus}</td>
                     <td>${this.formatarData(filho.dataCriacao)}</td>
-                </tr>
+                </table>
             `;
 			});
 
@@ -272,36 +369,66 @@ class UsuarioPerfilManager {
 	async atualizarPerfil() {
 		const nome = document.getElementById('inputNome')?.value.trim();
 		const email = document.getElementById('inputEmail')?.value.trim();
-		const telefone = document.getElementById('inputTelefone')?.value.trim();
+		let telefone = document.getElementById('inputTelefone')?.value.trim();
 		const senha = document.getElementById('inputSenha')?.value;
 		const confirmarSenha = document.getElementById('inputConfirmarSenha')?.value;
 
 		if (!nome) return alert('Nome é obrigatório');
 		if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return alert('Email inválido');
-		if (senha && senha.length < 6) return alert('Senha mínimo 6');
+		
+		// 🔥 NORMALIZA O TELEFONE (remove máscara, mantém apenas números)
+		if (telefone) {
+			telefone = this.normalizeTelefone(telefone);
+			
+			// Valida o telefone se foi preenchido
+			if (telefone.length > 0 && telefone.length < 10) {
+				alert('Telefone inválido. Deve conter DDD + número (mínimo 10 dígitos)');
+				return;
+			}
+			if (telefone.length > 11) {
+				alert('Telefone inválido. Máximo 11 dígitos');
+				return;
+			}
+		}
+		
+		if (senha && senha.length < 6) return alert('Senha mínimo 6 caracteres');
 		if (senha && senha !== confirmarSenha) return alert('Senhas não coincidem');
 
 		const payload = { nome, email, telefone: telefone || null };
 		if (senha) payload.senha = senha;
 
+		const submitBtn = document.querySelector('#perfilContainer button.btn-primary');
+		const originalHtml = submitBtn ? submitBtn.innerHTML : 'Salvar Alterações';
+		
+		if (submitBtn) {
+			submitBtn.disabled = true;
+			submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Salvando...';
+		}
+
 		try {
 			await window.Api.fetchJson('/api/me', { method: 'PUT', body: payload });
-			this.carregarMeuPerfil();
+			alert('✅ Perfil atualizado com sucesso!');
+			await this.carregarMeuPerfil();
 		} catch (err) {
 			console.error(err);
 			alert(err.message || 'Erro ao atualizar perfil');
+		} finally {
+			if (submitBtn) {
+				submitBtn.disabled = false;
+				submitBtn.innerHTML = originalHtml;
+			}
 		}
 	}
 
 	async solicitarDesativacao() {
-		if (!confirm('Deseja desativar sua conta?')) return;
+		if (!confirm('⚠️ ATENÇÃO: Desativar sua conta fará com que você não possa mais acessar o sistema.\n\nDeseja realmente desativar sua conta?')) return;
 
 		try {
 			await window.Api.fetchJson('/api/me/desativar', { method: 'PATCH' });
 
 			// encerra sessão (cookie)
 			await window.Api.fetchRaw('/auth/logout', { method: 'POST' }).catch(() => null);
-			window.location.href = '/auth/login';
+			window.location.href = '/auth/login?desativado=success';
 		} catch (err) {
 			console.error(err);
 			alert(err.message || 'Erro ao desativar conta');

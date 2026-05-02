@@ -1,4 +1,4 @@
-package com.multi_amigos.service.implemens;
+package com.multi_amigos.service.imple;
 
 import java.time.LocalDate;
 import java.util.HashMap;
@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -57,6 +58,7 @@ public class UsuarioServiceImpl implements UsuarioService {
 	}
 
 	@Override
+	@CacheEvict(value = "usuarios", allEntries = true)
 	public UsuarioDTO cadastrarUsuario(CadastroUsuarioDTO dto) {
 
 		// Email único
@@ -116,10 +118,12 @@ public class UsuarioServiceImpl implements UsuarioService {
 
 		// Salva o usuário
 		Usuario salvo = usuarioRepository.save(usuario);
+		usuarioRepository.flush();
 		return UsuarioMapper.toDTO(salvo);
 	}
 
 	@Override
+	@CacheEvict(value = "usuarios", allEntries = true)
 	public UsuarioDTO cadastroPublico(CadastroPublicoDTO dto) {
 		CadastroUsuarioDTO usuarioDTO = new CadastroUsuarioDTO();
 		usuarioDTO.setNome(dto.getNome());
@@ -133,6 +137,7 @@ public class UsuarioServiceImpl implements UsuarioService {
 
 	// Método para cadastro por link/referência
 	@Override
+	@CacheEvict(value = "usuarios", allEntries = true)
 	public UsuarioDTO cadastroPorReferencia(Long referenciaId, CadastroPublicoDTO dto) {
 		// Valida a referência
 		if (!usuarioRepository.existsByIdAndAtivoTrue(referenciaId)) {
@@ -153,6 +158,7 @@ public class UsuarioServiceImpl implements UsuarioService {
 	// Atualizar usuário
 	// =========================
 	@Override
+	@CacheEvict(value = "usuarios", allEntries = true)
 	public UsuarioDTO atualizarUsuario(Long id, AtualizarUsuarioDTO dto) {
 		Usuario usuario = usuarioRepository.findById(id)
 				.orElseThrow(() -> new UsuarioNaoEncontradoException("Usuário não encontrado"));
@@ -171,7 +177,9 @@ public class UsuarioServiceImpl implements UsuarioService {
 		}
 
 		if (dto.getTelefone() != null) {
-			usuario.setTelefone(dto.getTelefone());
+			// Normaliza o telefone antes de salvar
+			String telefoneNormalizado = dto.getTelefone().replaceAll("\\D", "");
+			usuario.setTelefone(telefoneNormalizado);
 		}
 
 		if (dto.getSenha() != null && !dto.getSenha().trim().isEmpty()) {
@@ -207,6 +215,13 @@ public class UsuarioServiceImpl implements UsuarioService {
 		}
 
 		Usuario atualizado = usuarioRepository.save(usuario);
+		usuarioRepository.flush(); // Força o flush para garantir que foi salvo no banco
+		
+		// LOG para debug
+		System.out.println("Usuário atualizado - ID: " + atualizado.getId() + 
+						 ", Telefone: " + atualizado.getTelefone() + 
+						 ", Nome: " + atualizado.getNome());
+		
 		return UsuarioMapper.toDTO(atualizado);
 	}
 
@@ -237,6 +252,7 @@ public class UsuarioServiceImpl implements UsuarioService {
 	// Desativar usuário (método específico)
 	// =========================
 	@Override
+	@CacheEvict(value = "usuarios", allEntries = true)
 	public void desativarUsuario(Long id) {
 		Usuario usuario = usuarioRepository.findById(id)
 				.orElseThrow(() -> new UsuarioNaoEncontradoException("Usuário não encontrado"));
@@ -248,12 +264,14 @@ public class UsuarioServiceImpl implements UsuarioService {
 
 		usuario.setAtivo(false);
 		usuarioRepository.save(usuario);
+		usuarioRepository.flush();
 	}
 
 	// =========================
 	// Reativar usuário
 	// =========================
 	@Override
+	@CacheEvict(value = "usuarios", allEntries = true)
 	public void reativarUsuario(Long id) {
 		Usuario usuario = usuarioRepository.findById(id)
 				.orElseThrow(() -> new UsuarioNaoEncontradoException("Usuário não encontrado"));
@@ -265,6 +283,7 @@ public class UsuarioServiceImpl implements UsuarioService {
 
 		usuario.setAtivo(true);
 		usuarioRepository.save(usuario);
+		usuarioRepository.flush();
 	}
 
 	@Override

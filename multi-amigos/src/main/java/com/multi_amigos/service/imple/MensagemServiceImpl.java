@@ -1,4 +1,4 @@
-package com.multi_amigos.service.implemens;
+package com.multi_amigos.service.imple;
 
 import java.time.LocalDateTime;
 import java.util.List;

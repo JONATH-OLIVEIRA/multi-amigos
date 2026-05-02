@@ -119,6 +119,42 @@ document.addEventListener("DOMContentLoaded", () => {
     return emailRegex.test(email);
   }
 
+  // 🔥 FUNÇÃO PARA NORMALIZAR TELEFONE (APENAS NÚMEROS)
+  function normalizeTelefone(telefone) {
+    if (!telefone) return "";
+    // Remove todos os caracteres não numéricos
+    return telefone.replace(/\D/g, "");
+  }
+
+  // 🔥 FUNÇÃO PARA APLICAR MÁSCARA DE TELEFONE
+  function aplicarMascaraTelefone(valor) {
+    let numbers = valor.replace(/\D/g, "");
+    let formatted = "";
+
+    if (numbers.length > 0) {
+      // DDD
+      if (numbers.length <= 2) {
+        formatted = `(${numbers}`;
+      } 
+      // DDD + primeiros dígitos
+      else if (numbers.length <= 7) {
+        formatted = `(${numbers.substring(0, 2)}) ${numbers.substring(2)}`;
+      } 
+      // DDD + 8 ou 9 dígitos + traço
+      else {
+        if (numbers.length <= 10) {
+          // Telefone fixo: (11) 9999-9999
+          formatted = `(${numbers.substring(0, 2)}) ${numbers.substring(2, 6)}-${numbers.substring(6, 10)}`;
+        } else {
+          // Celular: (11) 99999-9999
+          formatted = `(${numbers.substring(0, 2)}) ${numbers.substring(2, 7)}-${numbers.substring(7, 11)}`;
+        }
+      }
+    }
+
+    return formatted;
+  }
+
   // ==============================
   // Checa referência e sessão (admin)
   // ==============================
@@ -177,7 +213,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const email = document.getElementById("email")?.value.trim();
       const senha = document.getElementById("senha")?.value;
       const confirmarSenha = document.getElementById("confirmarSenha")?.value;
-      const telefone = document.getElementById("telefone")?.value.trim() || "";
+      const telefoneRaw = document.getElementById("telefone")?.value.trim() || "";
+      
+      // 🔥 NORMALIZA O TELEFONE (remove máscara, mantém apenas números)
+      const telefone = normalizeTelefone(telefoneRaw);
 
       let isValid = true;
 
@@ -213,6 +252,17 @@ document.addEventListener("DOMContentLoaded", () => {
         isValid = false;
       }
 
+      // 🔥 VALIDAÇÃO DO TELEFONE (se foi preenchido)
+      if (telefone && telefone.length > 0) {
+        if (telefone.length < 10) {
+          showFieldError("telefone", "Telefone inválido. Deve conter DDD + número (mínimo 10 dígitos)");
+          isValid = false;
+        } else if (telefone.length > 11) {
+          showFieldError("telefone", "Telefone inválido. Máximo 11 dígitos");
+          isValid = false;
+        }
+      }
+
       if (!isValid) return;
 
       const submitBtn = registerForm.querySelector('button[type="submit"]');
@@ -235,7 +285,7 @@ document.addEventListener("DOMContentLoaded", () => {
           nome,
           email,
           senha,
-          telefone: telefone || null,
+          telefone: telefone || null,  // 🔥 ENVIA O TELEFONE NORMALIZADO (APENAS NÚMEROS)
         };
 
         const urlParams = new URLSearchParams(window.location.search);
@@ -280,6 +330,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (String(errorMessage).includes("Email já cadastrado")) {
               errorMessage = "Este email já está cadastrado. Tente fazer login ou use outro email.";
+            }
+            
+            if (String(errorMessage).includes("Telefone")) {
+              errorMessage = "Este telefone já está cadastrado ou é inválido.";
             }
           } catch (_) {
             errorMessage = `${errorMessage}: ${response.statusText}`;
@@ -349,22 +403,59 @@ document.addEventListener("DOMContentLoaded", () => {
         else clearFieldError("nome");
       });
     }
+
+    // 🔥 VALIDAÇÃO DO TELEFONE EM TEMPO REAL
+    const telefoneInput = document.getElementById("telefone");
+    if (telefoneInput) {
+      telefoneInput.addEventListener("blur", () => {
+        const telefoneRaw = telefoneInput.value;
+        const apenasNumeros = normalizeTelefone(telefoneRaw);
+        
+        if (telefoneRaw && apenasNumeros.length > 0) {
+          if (apenasNumeros.length < 10) {
+            showFieldError("telefone", "Telefone inválido. Deve conter DDD + número (mínimo 10 dígitos)");
+          } else if (apenasNumeros.length > 11) {
+            showFieldError("telefone", "Telefone inválido. Máximo 11 dígitos");
+          } else {
+            clearFieldError("telefone");
+          }
+        } else {
+          clearFieldError("telefone");
+        }
+      });
+    }
   }
 
-  // máscara telefone (visual)
+  // 🔥 CONFIGURA MÁSCARA DE TELEFONE (com jQuery Mask Plugin ou vanilla JS)
   const telefoneInput = document.getElementById("telefone");
   if (telefoneInput) {
-    telefoneInput.addEventListener("input", function (e) {
-      let value = e.target.value.replace(/\D/g, "");
-
-      if (value.length > 0) {
-        if (value.length <= 2) value = `(${value}`;
-        else if (value.length <= 7) value = `(${value.substring(0, 2)}) ${value.substring(2)}`;
-        else value = `(${value.substring(0, 2)}) ${value.substring(2, 7)}-${value.substring(7, 11)}`;
-      }
-
-      e.target.value = value;
-    });
+    // Verifica se jQuery está disponível
+    if (typeof $ !== 'undefined' && $.fn && $.fn.mask) {
+      // Usa jQuery Mask Plugin se disponível
+      $(telefoneInput).mask('(00) 00000-0000', {
+        placeholder: '(00) 00000-0000',
+        onKeyPress: function(telefone, event, currentField, options) {
+          const digits = telefone.replace(/\D/g, '').length;
+          if (digits <= 10) {
+            $(this).mask('(00) 0000-00009', options);
+          } else {
+            $(this).mask('(00) 00000-0000', options);
+          }
+        }
+      });
+    } else {
+      // Fallback: máscara manual com vanilla JS
+      telefoneInput.addEventListener("input", function (e) {
+        let value = e.target.value;
+        let numbers = value.replace(/\D/g, "");
+        let formatted = aplicarMascaraTelefone(numbers);
+        
+        // Evita loop infinito
+        if (formatted !== value) {
+          e.target.value = formatted;
+        }
+      });
+    }
   }
 
   // flag cadastro success

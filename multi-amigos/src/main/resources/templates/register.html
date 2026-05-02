@@ -11,6 +11,9 @@
 <!-- Bootstrap Icons -->
 <link rel="stylesheet"
 	href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+<!-- jQuery Mask Plugin -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
 
 </head>
 <body>
@@ -46,15 +49,13 @@
 							<div class="form-text">Utilize um email válido</div>
 						</div>
 
-						<!-- CAMPO TELEFONE ADICIONADO AQUI -->
+						<!-- CAMPO TELEFONE COM MÁSCARA MELHORADA -->
 						<div class="mb-3">
 							<label for="telefone" class="form-label"> <i
 								class="bi bi-telephone"></i> Telefone
 							</label> <input type="tel" class="form-control" id="telefone"
-								placeholder="(11)99999-9999">
-							<!-- 🔥 REMOVA O ESPAÇO AQUI -->
-							<div class="form-text">Formato: (DD)99999-9999 (opcional)</div>
-							<!-- 🔥 REMOVA O ESPAÇO AQUI -->
+								placeholder="(11) 99999-9999">
+							<div class="form-text">Formato: (DD) 99999-9999 (obrigatório para recuperação de conta)</div>
 						</div>
 
 						<div class="mb-4">
@@ -103,47 +104,59 @@
 		src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 	<script>
-		// Máscara de telefone - VERSÃO OTIMIZADA
+		// Máscara de telefone usando jQuery Mask Plugin (padrão consistente)
 		document.addEventListener('DOMContentLoaded', function() {
 			const telefoneInput = document.getElementById('telefone');
-
+			
 			if (telefoneInput) {
-				// Formatação automática
-				telefoneInput.addEventListener('input', function(e) {
-					let value = e.target.value.replace(/\D/g, '');
-					let formatted = '';
-
-					if (value.length > 0) {
-						formatted = '(' + value.substring(0, 2);
-
-						if (value.length > 2) {
-							formatted += ')';
-							if (value.length > 7) {
-								formatted += value.substring(2, 7) + '-'
-										+ value.substring(7, 11);
-							} else {
-								formatted += value.substring(2, 7);
-							}
+				// Aplica máscara de telefone no padrão brasileiro
+				$(telefoneInput).mask('(00) 00000-0000', {
+					placeholder: '(00) 00000-0000',
+					onKeyPress: function(telefone, event, currentField, options) {
+						// Remove a formatação atual para contar os dígitos
+						const digits = telefone.replace(/\D/g, '').length;
+						
+						if (digits <= 10) {
+							// Telefone fixo: (11) 9999-9999
+							$(this).mask('(00) 0000-00009', options);
+						} else {
+							// Celular: (11) 99999-9999
+							$(this).mask('(00) 00000-0000', options);
 						}
 					}
-
-					e.target.value = formatted;
 				});
-
-				// Limpa qualquer formatação incorreta ao enviar
-				const form = document.getElementById('registerForm');
-				if (form) {
-					form.addEventListener('submit', function() {
-						if (telefoneInput.value) {
-							// Garante o formato correto: (DD)XXXXX-XXXX
-							let tel = telefoneInput.value;
-							tel = tel.replace(/\s/g, ''); // Remove espaços
-							tel = tel.replace(/(\d{2})(\d{5})(\d{4})/,
-									'($1)$2-$3'); // Formata
-							telefoneInput.value = tel;
-						}
-					});
-				}
+			}
+			
+			// Validação do formulário antes de enviar
+			const form = document.getElementById('registerForm');
+			if (form) {
+				form.addEventListener('submit', function(event) {
+					const telefone = telefoneInput.value;
+					const apenasNumeros = telefone.replace(/\D/g, '');
+					
+					// Verifica se o telefone tem pelo menos 10 dígitos (com DDD)
+					if (apenasNumeros.length > 0 && apenasNumeros.length < 10) {
+						event.preventDefault();
+						const errorDiv = document.getElementById('formErrors');
+						const errorMsg = document.getElementById('errorMessage');
+						errorMsg.textContent = 'Por favor, digite um telefone válido com DDD (mínimo 10 dígitos)';
+						errorDiv.classList.remove('d-none');
+						
+						// Remove a mensagem após 5 segundos
+						setTimeout(() => {
+							errorDiv.classList.add('d-none');
+						}, 5000);
+						
+						return false;
+					}
+					
+					// Se o telefone for válido, normaliza antes de enviar
+					if (telefone && apenasNumeros.length >= 10) {
+						// Atualiza o campo com o telefone normalizado (apenas números)
+						// O register.js vai enviar o valor normalizado
+						telefoneInput.value = apenasNumeros;
+					}
+				});
 			}
 		});
 	</script>

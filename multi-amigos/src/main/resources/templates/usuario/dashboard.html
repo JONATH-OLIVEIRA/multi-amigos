@@ -6,6 +6,9 @@
     <title>Minha Rede - MultiAmigos</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <!-- jQuery Mask Plugin -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
     <style>
         body { background: #f8f9fa; }
         .main-card { border-radius: 15px; border: none; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
@@ -26,6 +29,15 @@
         @keyframes slideIn {
             from { transform: translateX(100%); opacity: 0; }
             to { transform: translateX(0); opacity: 1; }
+        }
+        
+        /* Estilos para o modal de perfil */
+        .modal-header.bg-info {
+            background: linear-gradient(135deg, #0dcaf0, #0b9ec0);
+        }
+        .form-control:focus {
+            border-color: #0dcaf0;
+            box-shadow: 0 0 0 0.2rem rgba(13, 202, 240, 0.25);
         }
     </style>
 </head>
@@ -109,6 +121,104 @@
         <div id="conteudoDinamico" class="mt-4"></div>
     </div>
 
+    <!-- Modal de Edição de Perfil -->
+    <div class="modal fade" id="perfilModal" tabindex="-1" aria-labelledby="perfilModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title" id="perfilModalLabel">
+                        <i class="bi bi-pencil-square"></i> Editar Perfil
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="perfilForm">
+                        <input type="hidden" id="perfilId">
+                        <div class="mb-3">
+                            <label for="perfilNome" class="form-label">
+                                <i class="bi bi-person"></i> Nome
+                            </label>
+                            <input type="text" class="form-control" id="perfilNome" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="perfilEmail" class="form-label">
+                                <i class="bi bi-envelope"></i> Email
+                            </label>
+                            <input type="email" class="form-control" id="perfilEmail" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="perfilTelefone" class="form-label">
+                                <i class="bi bi-telephone"></i> Telefone
+                            </label>
+                            <input type="tel" class="form-control" id="perfilTelefone" 
+                                   placeholder="(11) 99999-9999">
+                            <div class="form-text">Formato: (DD) 99999-9999</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="perfilSenhaAtual" class="form-label">
+                                <i class="bi bi-lock"></i> Senha Atual
+                            </label>
+                            <input type="password" class="form-control" id="perfilSenhaAtual" 
+                                   placeholder="Digite sua senha atual para confirmar alterações">
+                        </div>
+                        <div class="mb-3">
+                            <label for="perfilNovaSenha" class="form-label">
+                                <i class="bi bi-key"></i> Nova Senha (opcional)
+                            </label>
+                            <input type="password" class="form-control" id="perfilNovaSenha" 
+                                   placeholder="Deixe em branco para manter a atual" minlength="6">
+                        </div>
+                        <div class="mb-3">
+                            <label for="perfilConfirmarSenha" class="form-label">
+                                <i class="bi bi-check-circle"></i> Confirmar Nova Senha
+                            </label>
+                            <input type="password" class="form-control" id="perfilConfirmarSenha" 
+                                   placeholder="Digite a nova senha novamente">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-x-circle"></i> Cancelar
+                    </button>
+                    <button type="button" class="btn btn-primary" id="btnSalvarPerfil">
+                        <i class="bi bi-save"></i> Salvar Alterações
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Link de Convite -->
+    <div class="modal fade" id="linkModal" tabindex="-1" aria-labelledby="linkModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title" id="linkModalLabel">
+                        <i class="bi bi-link-45deg"></i> Link de Convite
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Compartilhe este link para convidar pessoas para sua rede:</p>
+                    <div class="input-group mb-3">
+                        <input type="text" class="form-control" id="linkConvite" readonly>
+                        <button class="btn btn-primary" onclick="copiarLink()" type="button">
+                            <i class="bi bi-clipboard"></i> Copiar
+                        </button>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> 
+                        Pessoas que se cadastrarem através deste link serão adicionadas como seus contatos diretos.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
@@ -116,5 +226,73 @@
     <script src="/js/usuario-mensagem.js"></script>
     <script src="/js/usuario-perfil.js"></script>
     <script src="/js/dashboard-usuario.js"></script>
+
+    <script>
+        // Máscara de telefone para o campo no modal de perfil
+        document.addEventListener('DOMContentLoaded', function() {
+            const telefoneInput = document.getElementById('perfilTelefone');
+            
+            if (telefoneInput && typeof $ !== 'undefined' && $.fn && $.fn.mask) {
+                // Aplica máscara de telefone usando jQuery Mask Plugin
+                $(telefoneInput).mask('(00) 00000-0000', {
+                    placeholder: '(00) 00000-0000',
+                    onKeyPress: function(telefone, event, currentField, options) {
+                        const digits = telefone.replace(/\D/g, '').length;
+                        if (digits <= 10) {
+                            $(this).mask('(00) 0000-00009', options);
+                        } else {
+                            $(this).mask('(00) 00000-0000', options);
+                        }
+                    }
+                });
+            } else if (telefoneInput) {
+                // Fallback manual se jQuery Mask não estiver disponível
+                telefoneInput.addEventListener('input', function(e) {
+                    let value = e.target.value.replace(/\D/g, '');
+                    let formatted = '';
+                    
+                    if (value.length > 0) {
+                        if (value.length <= 2) {
+                            formatted = `(${value}`;
+                        } else if (value.length <= 7) {
+                            formatted = `(${value.substring(0, 2)}) ${value.substring(2)}`;
+                        } else {
+                            if (value.length <= 10) {
+                                formatted = `(${value.substring(0, 2)}) ${value.substring(2, 6)}-${value.substring(6, 10)}`;
+                            } else {
+                                formatted = `(${value.substring(0, 2)}) ${value.substring(2, 7)}-${value.substring(7, 11)}`;
+                            }
+                        }
+                    }
+                    
+                    if (formatted !== e.target.value) {
+                        e.target.value = formatted;
+                    }
+                });
+            }
+        });
+        
+        // Função global para copiar link
+        function copiarLink() {
+            const linkInput = document.getElementById('linkConvite');
+            linkInput.select();
+            linkInput.setSelectionRange(0, 99999);
+            document.execCommand('copy');
+            
+            // Feedback visual
+            const btn = event.target.closest('button');
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="bi bi-check"></i> Copiado!';
+            setTimeout(() => {
+                btn.innerHTML = originalHtml;
+            }, 2000);
+        }
+        
+        // Função para normalizar telefone (caso precise usar em algum lugar)
+        function normalizeTelefone(telefone) {
+            if (!telefone) return '';
+            return telefone.replace(/\D/g, '');
+        }
+    </script>
 </body>
 </html>

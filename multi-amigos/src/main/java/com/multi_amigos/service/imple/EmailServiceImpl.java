@@ -1,4 +1,4 @@
-package com.multi_amigos.service.implemens;
+package com.multi_amigos.service.imple;
 
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;

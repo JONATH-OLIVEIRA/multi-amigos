@@ -12,7 +12,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function normalizeLogin(value) {
     const v = (value || "").trim();
-    return v.includes("@") ? v : v.replace(/\D/g, "");
+    
+    // Se tiver @, é email - retorna sem alterações
+    if (v.includes("@")) {
+      return v;
+    }
+    
+    // Se não tiver @, remove todos os caracteres não numéricos (telefone)
+    // Isso remove parênteses, espaços, hífens, etc da máscara
+    const apenasNumeros = v.replace(/\D/g, "");
+    
+    return apenasNumeros;
   }
 
   // =========================
@@ -43,13 +53,19 @@ document.addEventListener("DOMContentLoaded", () => {
     loginForm.addEventListener("submit", async (e) => {
       e.preventDefault();
 
-      // Campo no HTML ainda chama "email" — mas agora ele é "login" (email ou telefone)
-      const rawLogin = document.getElementById("email")?.value;
+      // 🔥 O campo no HTML agora é "login" (não mais "email")
+      const rawLogin = document.getElementById("login")?.value || document.getElementById("email")?.value;
       const login = normalizeLogin(rawLogin);
       const senha = document.getElementById("senha")?.value;
 
       if (!login || !senha) {
         alert("Por favor, preencha todos os campos!");
+        return;
+      }
+
+      // Validação adicional para telefone (se não for email)
+      if (!login.includes('@') && login.length < 10) {
+        alert("Por favor, digite um telefone válido com DDD (mínimo 10 dígitos)");
         return;
       }
 
@@ -64,6 +80,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       try {
         console.log("📤 Enviando credenciais (cookie mode)...");
+        console.log("Login normalizado:", login); // 🔥 LOG para debug
 
         // 🔥 IMPORTANTE:
         // - credentials: "include" para RECEBER o cookie HttpOnly jwt_token
