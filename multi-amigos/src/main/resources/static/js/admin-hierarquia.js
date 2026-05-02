@@ -14,7 +14,7 @@ class AdminHierarquia {
         this.nodeRadius = this.isMobile() ? 35 : 45;
         this.zoom = null;
         this.tooltip = null;
-        this.touchStart = null; // Para detectar toque vs clique
+        this.touchStart = null;
     }
 
     // 🔥 DETECTA SE É MOBILE
@@ -27,15 +27,14 @@ class AdminHierarquia {
         const container = document.getElementById('arvoreContainer');
         const width = container ? container.clientWidth : window.innerWidth;
         
-        this.width = Math.min(width - 40, 1400); // Máximo 1400, mas respeita largura da tela
-        this.height = this.isMobile() ? 500 : 800;
+        this.width = Math.min(width - 40, 1400);
+        this.height = this.isMobile() ? 600 : 800;
         
-        // Ajusta raio do nó para mobile
         this.nodeRadius = this.isMobile() ? 30 : 45;
     }
 
     // ============================================
-    // HTTP HELPERS (COOKIE + JSON + ERROS) ✅
+    // HTTP HELPERS
     // ============================================
 
     authHeaders(extra = {}) {
@@ -92,21 +91,17 @@ class AdminHierarquia {
             return;
         }
 
-        // 🔥 ESCUTA MUDANÇA DE ORIENTAÇÃO
         window.addEventListener('resize', () => this.handleResize());
         
         this.render();
         this.carregarUsuarios();
     }
 
-    // 🔥 LIDA COM REDIMENSIONAMENTO
     handleResize() {
         if (!this.arvoreAtual) return;
         
-        // Atualiza dimensões
         this.updateDimensions();
         
-        // Re-renderiza a árvore com novas dimensões
         setTimeout(() => {
             this.inicializarSVG();
             this.renderizarArvore(this.arvoreAtual);
@@ -116,7 +111,6 @@ class AdminHierarquia {
     render() {
         this.container.innerHTML = '';
 
-        // 🔥 VERSÃO MOBILE-FIRST DO HTML (mantendo o mesmo estilo)
         const html = `
             <div class="hierarquia-container">
                 <div class="hierarquia-card">
@@ -193,19 +187,16 @@ class AdminHierarquia {
                             <h2 id="totalMembros">0</h2>
                             <p class="text-muted mb-0">Membros</p>
                         </div>
-
                         <div class="estatistica-card-moderno">
                             <h6>Níveis</h6>
                             <h2 id="totalNiveis">0</h2>
                             <p class="text-muted mb-0">Profundidade</p>
                         </div>
-
                         <div class="estatistica-card-moderno">
                             <h6>Ativos</h6>
                             <h2 id="usuariosAtivos">0</h2>
                             <p class="text-muted mb-0">Ativos</p>
                         </div>
-
                         <div class="estatistica-card-moderno">
                             <h6>Admins</h6>
                             <h2 id="totalAdmins">0</h2>
@@ -239,33 +230,22 @@ class AdminHierarquia {
                             </div>
                         </div>
 
-                        <div class="legenda-moderna mt-4 flex-wrap">
-                            <div class="legenda-item-moderno">
-                                <div class="legenda-icon admin">
-                                    <i class="bi bi-shield-fill-check"></i>
-                                </div>
-                                <span class="legenda-text">Admin</span>
+                        <div class="legenda-moderna mt-4">
+                            <div class="legenda-item">
+                                <div class="legenda-icon admin"></div>
+                                <span>Administrador</span>
                             </div>
-
-                            <div class="legenda-item-moderno">
-                                <div class="legenda-icon usuario">
-                                    <i class="bi bi-person-fill"></i>
-                                </div>
-                                <span class="legenda-text">Usuário</span>
+                            <div class="legenda-item">
+                                <div class="legenda-icon usuario"></div>
+                                <span>Usuário Ativo</span>
                             </div>
-
-                            <div class="legenda-item-moderno">
-                                <div class="legenda-icon inativo">
-                                    <i class="bi bi-x-circle-fill"></i>
-                                </div>
-                                <span class="legenda-text">Inativo</span>
+                            <div class="legenda-item">
+                                <div class="legenda-icon inativo"></div>
+                                <span>Usuário Inativo</span>
                             </div>
-
-                            <div class="legenda-item-moderno">
-                                <div class="legenda-icon" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
-                                    <i class="bi bi-people-fill"></i>
-                                </div>
-                                <span class="legenda-text">Tem Filhos</span>
+                            <div class="legenda-item">
+                                <div class="legenda-icon filhos"></div>
+                                <span>Tem Filhos</span>
                             </div>
                         </div>
                     </div>
@@ -326,7 +306,6 @@ class AdminHierarquia {
             if (this.arvoreAtual) this.renderizarArvore(this.arvoreAtual);
         });
 
-        // 🔥 SUPORTE A TOQUE PARA DISPOSITIVOS MÓVEIS
         const container = document.getElementById('arvoreContainer');
         if (container) {
             container.addEventListener('touchstart', (e) => {
@@ -346,8 +325,8 @@ class AdminHierarquia {
         d3.select('#arvoreSvg').selectAll('*').remove();
 
         const svg = d3.select('#arvoreSvg')
-            .attr('width', this.width)
-            .attr('height', this.height)
+            .attr('width', '100%')
+            .attr('height', '100%')
             .attr('viewBox', `0 0 ${this.width} ${this.height}`)
             .attr('preserveAspectRatio', 'xMidYMid meet');
 
@@ -477,6 +456,7 @@ class AdminHierarquia {
             `Exibindo rede de ${nome} • ${this.arvoreAtual.totalMembros} membros • ${this.arvoreAtual.totalNiveis} níveis`;
     }
 
+    // 🔥 RENDERIZAÇÃO CORRIGIDA - LAYOUT VERTICAL
     renderizarArvore(arvoreDTO) {
         if (!arvoreDTO || !arvoreDTO.raiz) return;
 
@@ -497,37 +477,102 @@ class AdminHierarquia {
             return;
         }
 
+        // Configura o tamanho da árvore baseado no número de nós
+        const root = d3.hierarchy(raizFiltrada, d => d.filhos);
+        
+        // Calcula dimensões dinâmicas
+        const nodeWidth = this.nodeRadius * 2 + 50;
+        const nodeHeight = this.nodeRadius * 2 + 70;
+        
+        const totalNodes = root.descendants().length;
+        const maxDepth = root.height;
+        
+        let treeWidth, treeHeight;
+        
+        if (layout === 'horizontal') {
+            treeWidth = (maxDepth + 1) * nodeHeight;
+            treeHeight = totalNodes * nodeWidth;
+        } else if (layout === 'radial') {
+            treeWidth = Math.min(this.width, Math.max(600, totalNodes * 30));
+            treeHeight = Math.min(this.height, Math.max(500, totalNodes * 30));
+        } else {
+            // Vertical: largura baseada no número de nós, altura baseada na profundidade
+            treeWidth = totalNodes * nodeWidth;
+            treeHeight = (maxDepth + 1) * nodeHeight;
+        }
+        
         let treeLayout;
         switch (layout) {
             case 'horizontal':
-                treeLayout = d3.tree().size([this.height - 150, this.width - 300]);
+                treeLayout = d3.tree()
+                    .size([treeHeight, treeWidth])
+                    .separation((a, b) => (a.parent === b.parent ? 1.2 : 1.5));
                 break;
             case 'radial':
-                treeLayout = d3.tree().size([2 * Math.PI, Math.min(this.width, this.height) / 2 - 100])
-                    .separation((a, b) => (a.parent == b.parent ? 1 : 2) / a.depth);
+                treeLayout = d3.tree()
+                    .size([2 * Math.PI, Math.min(treeWidth, treeHeight) / 2])
+                    .separation((a, b) => (a.parent === b.parent ? 1 : 2) / a.depth);
                 break;
             case 'vertical':
             default:
-                treeLayout = d3.tree().size([this.width - 300, this.height - 150]);
+                treeLayout = d3.tree()
+                    .size([treeHeight, treeWidth])
+                    .separation((a, b) => (a.parent === b.parent ? 1.2 : 1.8));
                 break;
         }
-
-        const root = d3.hierarchy(raizFiltrada, d => d.filhos);
+        
         treeLayout(root);
-
+        
+        // Atualiza o viewBox para mostrar toda a árvore
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        
+        if (layout === 'horizontal') {
+            root.descendants().forEach(node => {
+                minX = Math.min(minX, node.x);
+                maxX = Math.max(maxX, node.x);
+                minY = Math.min(minY, node.y);
+                maxY = Math.max(maxY, node.y);
+            });
+        } else {
+            root.descendants().forEach(node => {
+                minX = Math.min(minX, node.y);
+                maxX = Math.max(maxX, node.y);
+                minY = Math.min(minY, node.x);
+                maxY = Math.max(maxY, node.x);
+            });
+        }
+        
+        const padding = 120;
+        const viewBoxWidth = maxX - minX + padding * 2;
+        const viewBoxHeight = maxY - minY + padding * 2;
+        
+        this.svg.svg
+            .attr('viewBox', `${minX - padding} ${minY - padding} ${viewBoxWidth} ${viewBoxHeight}`);
+        
         let linkGenerator, nodeTransform;
-
+        
         if (layout === 'radial') {
-            linkGenerator = d3.linkRadial().angle(d => d.x).radius(d => d.y);
+            linkGenerator = d3.linkRadial()
+                .angle(d => d.x)
+                .radius(d => d.y);
             nodeTransform = d => {
                 const angle = d.x - Math.PI / 2;
                 return `translate(${d.y * Math.cos(angle)},${d.y * Math.sin(angle)})`;
             };
-        } else {
-            linkGenerator = d3.linkHorizontal().x(d => d.y).y(d => d.x);
+        } else if (layout === 'horizontal') {
+            linkGenerator = d3.linkHorizontal()
+                .x(d => d.y)
+                .y(d => d.x);
             nodeTransform = d => `translate(${d.y},${d.x})`;
+        } else {
+            // Vertical: x é horizontal, y é vertical (profundidade)
+            linkGenerator = d3.linkVertical()
+                .x(d => d.x)
+                .y(d => d.y);
+            nodeTransform = d => `translate(${d.x},${d.y})`;
         }
-
+        
+        // Desenha as linhas
         this.svg.g.append('g')
             .attr('class', 'links')
             .selectAll('path')
@@ -535,8 +580,12 @@ class AdminHierarquia {
             .enter()
             .append('path')
             .attr('d', linkGenerator)
-            .attr('class', 'link-arvore');
-
+            .attr('class', 'link-arvore')
+            .attr('fill', 'none')
+            .attr('stroke', '#cbd5e1')
+            .attr('stroke-width', 2);
+        
+        // Desenha os nós
         const nodes = this.svg.g.append('g')
             .attr('class', 'nodes')
             .selectAll('g')
@@ -549,10 +598,18 @@ class AdminHierarquia {
             .on('click', (event, d) => this.mostrarDetalhesUsuario(d.data))
             .on('mouseover', (event, d) => this.mostrarTooltipModerno(event, d.data))
             .on('mouseout', () => this.esconderTooltip());
-
+        
+        // Círculo principal
         nodes.append('circle')
             .attr('r', this.nodeRadius)
             .attr('class', d => this.getClasseNode(d.data))
+            .attr('fill', d => {
+                if (d.data.perfil === 'ADMIN') return 'url(#gradiente-admin)';
+                if (!d.data.ativo) return 'url(#gradiente-inativo)';
+                return 'url(#gradiente-usuario)';
+            })
+            .attr('stroke', '#ffffff')
+            .attr('stroke-width', 3)
             .style('filter', d =>
                 d.data.perfil === 'ADMIN'
                     ? 'drop-shadow(0 4px 8px rgba(239, 68, 68, 0.3))'
@@ -560,7 +617,8 @@ class AdminHierarquia {
                         ? 'drop-shadow(0 4px 8px rgba(37, 99, 235, 0.3))'
                         : 'drop-shadow(0 4px 8px rgba(100, 116, 139, 0.3))'
             );
-
+        
+        // Ícone
         nodes.append('text')
             .attr('text-anchor', 'middle')
             .attr('dy', '0.35em')
@@ -568,19 +626,27 @@ class AdminHierarquia {
             .attr('font-size', this.isMobile() ? '20px' : '24px')
             .attr('font-weight', 'bold')
             .text(d => this.getIconeNode(d.data));
-
+        
+        // Nome
         nodes.append('text')
             .attr('text-anchor', 'middle')
             .attr('dy', this.nodeRadius + (this.isMobile() ? 15 : 20))
             .attr('class', 'node-text')
+            .attr('fill', '#1e293b')
+            .attr('font-size', this.isMobile() ? '11px' : '12px')
+            .attr('font-weight', '500')
             .text(d => this.truncarTexto((d.data.nome || '').split(' ')[0] || '', this.isMobile() ? 8 : 10));
-
+        
+        // Status e nível
         nodes.append('text')
             .attr('text-anchor', 'middle')
-            .attr('dy', this.nodeRadius + (this.isMobile() ? 30 : 40))
+            .attr('dy', this.nodeRadius + (this.isMobile() ? 32 : 40))
             .attr('class', 'node-subtext')
-            .text(d => `${d.data.perfil === 'ADMIN' ? '👑 ' : ''}Nível ${d.data.nivel} • ${d.data.ativo ? '✅' : '⏸️'}`);
-
+            .attr('fill', '#64748b')
+            .attr('font-size', this.isMobile() ? '9px' : '10px')
+            .text(d => `${d.data.perfil === 'ADMIN' ? '👑 ' : ''}Nível ${d.depth} • ${d.data.ativo ? '✅' : '⏸️'}`);
+        
+        // Indicador de filhos
         nodes.filter(d => d.children && d.children.length > 0)
             .append('circle')
             .attr('cx', this.nodeRadius - (this.isMobile() ? 10 : 12))
@@ -590,7 +656,7 @@ class AdminHierarquia {
             .attr('stroke', 'white')
             .attr('stroke-width', 2)
             .style('filter', 'drop-shadow(0 2px 4px rgba(16, 185, 129, 0.4))');
-
+        
         nodes.filter(d => d.children && d.children.length > 0)
             .append('text')
             .attr('x', this.nodeRadius - (this.isMobile() ? 10 : 12))
@@ -600,7 +666,7 @@ class AdminHierarquia {
             .attr('font-size', this.isMobile() ? '8px' : '10px')
             .attr('font-weight', 'bold')
             .text(d => d.children.length);
-
+        
         setTimeout(() => this.centralizarArvore(), 100);
     }
 
@@ -648,7 +714,7 @@ class AdminHierarquia {
     }
 
     mostrarTooltipModerno(event, usuario) {
-        if (!this.tooltip || this.isMobile()) return; // Desativa tooltip em mobile
+        if (!this.tooltip || this.isMobile()) return;
 
         const containerRect = document.getElementById('arvoreContainer').getBoundingClientRect();
         const x = event.clientX - containerRect.left;
@@ -733,7 +799,6 @@ class AdminHierarquia {
                                         <h2 class="fs-5">${usuarioDetalhado.telefone || 'Não informado'}</h2>
                                     </div>
                                 </div>
-
                                 <div class="col-6">
                                     <div class="estatistica-card-moderno h-100">
                                         <h6>Perfil</h6>
@@ -744,7 +809,6 @@ class AdminHierarquia {
                                         </h2>
                                     </div>
                                 </div>
-
                                 <div class="col-6">
                                     <div class="estatistica-card-moderno h-100">
                                         <h6>Status</h6>
@@ -755,21 +819,18 @@ class AdminHierarquia {
                                         </h2>
                                     </div>
                                 </div>
-
                                 <div class="col-6">
                                     <div class="estatistica-card-moderno h-100">
                                         <h6>Filhos Diretos</h6>
                                         <h2 class="fs-5">${usuarioDetalhado.filhosIds ? usuarioDetalhado.filhosIds.length : 0}</h2>
                                     </div>
                                 </div>
-
                                 <div class="col-12">
                                     <div class="estatistica-card-moderno">
                                         <h6>Data de Cadastro</h6>
                                         <p class="mb-2">${usuarioDetalhado.dataCriacao ? new Date(usuarioDetalhado.dataCriacao).toLocaleString('pt-BR') : 'N/A'}</p>
                                     </div>
                                 </div>
-
                                 <div class="col-12">
                                     <div class="estatistica-card-moderno">
                                         <h6>Última Atualização</h6>
@@ -831,7 +892,6 @@ class AdminHierarquia {
         }
     }
 
-    // 🔥 MÉTODO PARA CENTRALIZAR COM ANIMAÇÃO SUAVE EM MOBILE
     centralizarArvore() {
         if (!this.svg || !this.svg.svg) return;
 
@@ -839,15 +899,19 @@ class AdminHierarquia {
         if (!gElement || !gElement.getBBox) return;
 
         const bbox = gElement.getBBox();
-        const scale = Math.min(this.width / bbox.width, this.height / bbox.height, 0.85);
-
+        const padding = 50;
+        
+        const scaleX = (this.width - padding) / (bbox.width + padding);
+        const scaleY = (this.height - padding) / (bbox.height + padding);
+        const scale = Math.min(scaleX, scaleY, 1.2);
+        
         const translate = [
-            this.width / 2 - (bbox.x + bbox.width / 2) * scale,
-            this.height / 2 - (bbox.y + bbox.height / 2) * scale
+            (this.width / 2) - (bbox.x + bbox.width / 2) * scale,
+            (this.height / 2) - (bbox.y + bbox.height / 2) * scale
         ];
-
+        
         this.svg.svg.transition()
-            .duration(this.isMobile() ? 500 : 1000)
+            .duration(this.isMobile() ? 500 : 750)
             .call(this.zoom.transform, d3.zoomIdentity.translate(translate[0], translate[1]).scale(scale));
     }
 

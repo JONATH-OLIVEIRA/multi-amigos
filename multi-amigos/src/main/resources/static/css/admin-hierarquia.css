@@ -66,11 +66,6 @@
     row-gap: 20px;
 }
 
-.controles-modernos .row > div {
-    display: flex;
-    flex-direction: column;
-}
-
 .form-label-moderno {
     font-weight: 600;
     color: #475569;
@@ -80,8 +75,7 @@
     letter-spacing: 0.5px;
 }
 
-.form-select-moderno,
-.form-control.form-select-moderno {
+.form-select-moderno {
     width: 100%;
     border: 2px solid #e2e8f0;
     border-radius: 12px;
@@ -110,10 +104,7 @@
     transition: all 0.25s ease;
     white-space: nowrap;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04);
-}
-
-.controles-modernos .btn-moderno {
-    margin-top: auto;
+    cursor: pointer;
 }
 
 .btn-moderno-primary {
@@ -128,20 +119,47 @@
     box-shadow: 0 6px 14px rgba(79, 70, 229, 0.15);
 }
 
+.btn-moderno-danger {
+    background: #fef2f2;
+    color: #dc2626;
+    border-color: #fecaca;
+}
+
+.btn-moderno-danger:hover {
+    background: #fee2e2;
+}
+
+.btn-moderno-success {
+    background: #ecfdf5;
+    color: #059669;
+    border-color: #a7f3d0;
+}
+
+.btn-moderno-success:hover {
+    background: #d1fae5;
+}
+
+.btn-moderno-warning {
+    background: #fffbeb;
+    color: #d97706;
+    border-color: #fde68a;
+}
+
 /* ============================================
    ESTATÍSTICAS
    ============================================ */
 .estatisticas-modernas {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 20px;
     padding: 25px;
+    background: #f8fafc;
 }
 
 .estatistica-card-moderno {
     background: white;
     border-radius: 16px;
-    padding: 25px;
+    padding: 20px;
     text-align: center;
     border: 1px solid #e2e8f0;
     position: relative;
@@ -160,17 +178,18 @@
 }
 
 .estatistica-card-moderno h2 {
-    font-size: 2.5rem;
+    font-size: 2rem;
     font-weight: 800;
     margin: 10px 0;
     background: linear-gradient(135deg, #4f46e5, #7c3aed);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .estatistica-card-moderno h6 {
     color: #64748b;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     text-transform: uppercase;
     letter-spacing: 1px;
 }
@@ -189,57 +208,53 @@
     background: white;
     border-radius: 20px;
     border: 1px solid #e2e8f0;
-    overflow: hidden;
+    overflow: auto;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.05);
+    position: relative;
+}
+
+.arvore-svg-container svg {
+    display: block;
+    margin: 0 auto;
 }
 
 /* ============================================
    LINHAS DA ÁRVORE (SVG)
    ============================================ */
-.arvore-svg-container svg path,
-.arvore-svg-container svg line {
+.link-arvore {
     stroke: #cbd5e1 !important;
-    stroke-width: 1.5px !important;
+    stroke-width: 2px !important;
     fill: none;
+    transition: stroke 0.2s ease;
 }
 
-.arvore-svg-container svg path.highlight,
-.arvore-svg-container svg line.highlight {
-    stroke: #6366f1 !important;
-    stroke-width: 2px !important;
+.link-arvore:hover {
+    stroke: #818cf8 !important;
+    stroke-width: 2.5px !important;
 }
 
 /* ============================================
-   NÓS DA ÁRVORE (CLASSES DO JS)
+   NÓS DA ÁRVORE
    ============================================ */
-.arvore-svg-container svg circle {
-    stroke-width: 2px;
-    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.06));
-}
-
-/* 🔴 ADMIN */
-.arvore-svg-container svg circle.node-admin {
-    fill: url(#gradiente-admin);
-    stroke: #b91c1c;
-}
-
-/* 🔵 USUÁRIO ATIVO */
-.arvore-svg-container svg circle.node-usuario {
-    fill: url(#gradiente-usuario);
-    stroke: #1d4ed8;
-}
-
-/* 🟣 USUÁRIO INATIVO */
-.arvore-svg-container svg circle.node-inativo {
-    fill: url(#gradiente-inativo);
-    stroke: #6b21a8;
-    opacity: 0.9;
-}
-
-/* Hover */
-.arvore-svg-container svg circle:hover {
-    transform: scale(1.06);
+.node circle {
+    transition: all 0.2s ease;
     cursor: pointer;
+}
+
+.node circle:hover {
+    transform: scale(1.05);
+    filter: brightness(1.05) !important;
+}
+
+.node-text {
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 2px 6px;
+    border-radius: 12px;
+}
+
+.node-subtext {
+    font-weight: 500;
 }
 
 /* ============================================
@@ -249,42 +264,254 @@
     position: absolute;
     background: white;
     border-radius: 16px;
-    padding: 20px;
+    padding: 16px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
     border: 1px solid #e2e8f0;
     pointer-events: none;
     z-index: 1000;
-    max-width: 320px;
-    transform: translate(-50%, -100%);
+    max-width: 280px;
+    min-width: 200px;
+}
+
+.tooltip-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.tooltip-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+}
+
+.tooltip-avatar.admin {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+
+.tooltip-avatar.usuario {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+}
+
+.tooltip-info h6 {
+    margin: 0 0 4px 0;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.tooltip-info small {
+    font-size: 11px;
+    color: #64748b;
+}
+
+.tooltip-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.tooltip-stat {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    padding: 4px 0;
+}
+
+.tooltip-stat span:first-child {
+    color: #64748b;
+}
+
+.tooltip-stat span:last-child {
+    font-weight: 600;
+    color: #1e293b;
 }
 
 /* ============================================
-   ZOOM
+   ZOOM CONTROLS
    ============================================ */
 .zoom-controls-modernos {
     position: absolute;
-    bottom: 30px;
-    right: 30px;
+    bottom: 20px;
+    right: 20px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
     z-index: 100;
+}
+
+.btn-zoom-moderno {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: white;
+    border: 1px solid #e2e8f0;
+    color: #4f46e5;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.btn-zoom-moderno:hover {
+    background: #eef2ff;
+    transform: scale(1.05);
+}
+
+/* ============================================
+   LEGENDA
+   ============================================ */
+.legenda-moderna {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+    padding: 15px 20px;
+    background: #f1f5f9;
+    border-radius: 12px;
+    margin-top: 20px;
+}
+
+.legenda-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #334155;
+}
+
+.legenda-icon {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+}
+
+.legenda-icon.admin {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    box-shadow: 0 0 0 2px #fecaca;
+}
+
+.legenda-icon.usuario {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    box-shadow: 0 0 0 2px #bfdbfe;
+}
+
+.legenda-icon.inativo {
+    background: linear-gradient(135deg, #64748b, #475569);
+    box-shadow: 0 0 0 2px #cbd5e1;
+}
+
+.legenda-icon.filhos {
+    background: #10b981;
+    box-shadow: 0 0 0 2px #a7f3d0;
+    border-radius: 4px;
+}
+
+/* ============================================
+   MODAL MOBILE-FRIENDLY
+   ============================================ */
+@media (max-width: 768px) {
+    .modal-dialog {
+        margin: 0.5rem;
+    }
+    
+    .modal-body {
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+    
+    .modal-footer {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .modal-footer .btn {
+        width: 100%;
+        margin-left: 0 !important;
+    }
 }
 
 /* ============================================
    RESPONSIVIDADE
    ============================================ */
 @media (max-width: 768px) {
+    .hierarquia-header {
+        padding: 20px;
+    }
+    
     .hierarquia-header h4 {
         font-size: 1.4rem;
     }
+    
+    .controles-modernos {
+        padding: 20px;
+    }
+    
+    .controles-modernos .input-group {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .btn-moderno {
+        width: 100%;
+        white-space: normal;
+    }
+    
+    .estatisticas-modernas {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        padding: 20px;
+    }
+    
+    .estatistica-card-moderno {
+        padding: 15px;
+    }
+    
+    .estatistica-card-moderno h2 {
+        font-size: 1.5rem;
+    }
+    
+    .arvore-area-moderna {
+        padding: 20px;
+    }
+    
+    .zoom-controls-modernos {
+        bottom: 15px;
+        right: 15px;
+    }
+    
+    .btn-zoom-moderno {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .legenda-moderna {
+        gap: 12px;
+    }
+    
+    .legenda-item {
+        font-size: 0.75rem;
+    }
+}
 
+@media (max-width: 480px) {
     .estatisticas-modernas {
         grid-template-columns: 1fr;
     }
-
-    .btn-moderno {
-        width: 100%;
+    
+    .tooltip-moderno {
+        display: none !important;
     }
 }
 
@@ -301,77 +528,43 @@
         transform: translateY(0);
     }
 }
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
 /* ============================================
-   LEGENDA DA HIERARQUIA
+   UTILITÁRIOS
    ============================================ */
-
-.legenda-hierarquia {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    padding: 15px 25px;
-    background: #f8fafc;
-    border-top: 1px solid #e2e8f0;
+.w-100 {
+    width: 100% !important;
 }
 
-.legenda-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.9rem;
-    font-weight: 500;
-    color: #334155;
+.flex-column {
+    flex-direction: column !important;
 }
 
-/* Bolinha base */
-.legenda-dot {
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    display: inline-block;
-    border: 2px solid transparent;
+.gap-2 {
+    gap: 0.5rem !important;
 }
 
-/* 🔴 Administrador */
-.legenda-admin .legenda-dot {
-    background: linear-gradient(135deg, #ef4444, #b91c1c);
-    border-color: #b91c1c;
+.text-center {
+    text-align: center !important;
 }
 
-/* 🔵 Usuário Normal */
-.legenda-usuario .legenda-dot {
-    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-    border-color: #1d4ed8;
+/* Acessibilidade */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
 }
-
-/* 🟣 Usuário Inativo */
-.legenda-inativo .legenda-dot {
-    background: linear-gradient(135deg, #a855f7, #6b21a8);
-    border-color: #6b21a8;
-    opacity: 0.9;
-}
-
-/* 👶 Tem filhos */
-.legenda-filhos .legenda-dot {
-    background: #22c55e;
-    border-color: #15803d;
-}
-.legenda-moderna {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    padding: 15px 25px;
-    background: #f8fafc;
-    border-top: 1px solid #e2e8f0;
-}
-
-/* reaproveita tudo */
-.legenda-moderna .legenda-item { 
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.9rem;
-    font-weight: 500;
-    color: #334155;
-}
-
