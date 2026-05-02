@@ -10,22 +10,71 @@
     --muted: #6c757d;
     --light-bg: #f8f9fc;
 
-    /* Novas cores amig�veis */
+    /* Novas cores amigáveis */
     --success-readable: #0f5132;
     --success-bg-soft: #e6f4ea;
+    
+    /* 🔥 Tamanhos base para mobile */
+    --spacing-xs: 0.5rem;
+    --spacing-sm: 0.75rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+    --spacing-xl: 2rem;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html {
+    font-size: 16px; /* Base para rem */
 }
 
 body {
     font-family: "Segoe UI", Roboto, Arial, sans-serif;
     color: var(--dark);
     background-color: #ffffff;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 /* =========================
-   NAVBAR
+   RESPONSIVE TYPOGRAPHY
+========================= */
+h1 {
+    font-size: 1.75rem;
+}
+
+h2 {
+    font-size: 1.5rem;
+}
+
+h3 {
+    font-size: 1.25rem;
+}
+
+h4 {
+    font-size: 1.125rem;
+}
+
+@media (min-width: 768px) {
+    h1 { font-size: 2.5rem; }
+    h2 { font-size: 2rem; }
+    h3 { font-size: 1.75rem; }
+    h4 { font-size: 1.5rem; }
+}
+
+/* =========================
+   NAVBAR MOBILE-FIRST
 ========================= */
 .navbar {
     background-color: var(--primary) !important;
+    padding: 0.75rem 1rem;
+}
+
+.navbar-brand {
+    font-size: 1.25rem;
 }
 
 .navbar-brand,
@@ -34,8 +83,36 @@ body {
     font-weight: 500;
 }
 
+.navbar-nav .nav-link {
+    padding: 0.5rem 0.75rem;
+}
+
 .navbar-nav .nav-link:hover {
     opacity: 0.9;
+}
+
+/* Botão toggler (hambúrguer) */
+.navbar-toggler {
+    border: none;
+    padding: 0.5rem;
+}
+
+.navbar-toggler:focus {
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
+}
+
+/* Menu mobile */
+@media (max-width: 991.98px) {
+    .navbar-collapse {
+        background-color: var(--primary);
+        padding: 1rem;
+        border-radius: 12px;
+        margin-top: 0.5rem;
+    }
+    
+    .navbar-nav {
+        gap: 0.25rem;
+    }
 }
 
 /* Corrige links verdes quando logado */
@@ -54,15 +131,22 @@ body {
 }
 
 /* =========================
-   HERO SECTION
+   HERO SECTION MOBILE-FIRST
 ========================= */
 .hero-section {
     background: linear-gradient(135deg, var(--primary), var(--secondary));
-    min-height: 70vh;
-    padding-top: 90px;
+    min-height: 60vh;
+    padding: 80px 1rem;
     display: flex;
     align-items: center;
     text-align: center;
+}
+
+@media (min-width: 768px) {
+    .hero-section {
+        min-height: 70vh;
+        padding-top: 90px;
+    }
 }
 
 .hero-section h1,
@@ -70,21 +154,32 @@ body {
     color: #ffffff;
 }
 
-/* Bot�es Hero */
+/* Botões Hero */
 .hero-section .btn {
-    padding: 0.75rem 2rem;
-    font-size: 1.1rem;
+    padding: 0.75rem 1.25rem;
+    font-size: 0.95rem;
     border-radius: 50px;
     transition: all 0.3s ease;
+    width: 100%;
+    margin-bottom: 0.5rem;
 }
 
-/* Bot�o claro */
+@media (min-width: 576px) {
+    .hero-section .btn {
+        width: auto;
+        margin-bottom: 0;
+        padding: 0.75rem 2rem;
+        font-size: 1.1rem;
+    }
+}
+
+/* Botão claro */
 .hero-section .btn-light {
     color: var(--primary);
     font-weight: 600;
 }
 
-/* Ajuste CR�TICO: bot�o verde outline no hero */
+/* Ajuste CRÍTICO: botão verde outline no hero */
 .hero-section .btn-outline-success {
     color: #ffffff;
     border-color: #ffffff;
@@ -96,7 +191,7 @@ body {
     color: var(--success-readable);
 }
 
-/* Bot�o success s�lido */
+/* Botão success sólido */
 .hero-section .btn-success {
     background-color: #1f9d55;
     border-color: #1f9d55;
@@ -107,27 +202,43 @@ body {
     background-color: #198754;
 }
 
-/* Hover geral */
-.hero-section .btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+/* Hover geral (desktop) */
+@media (hover: hover) {
+    .hero-section .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+    }
 }
 
 /* =========================
-   FEATURES
+   FEATURES MOBILE-FIRST
 ========================= */
 .features {
     background-color: var(--light-bg);
+    padding: 2rem 0;
 }
 
 .features .card {
     border-radius: 16px;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
+    margin-bottom: 1rem;
+    height: 100%;
 }
 
-.features .card:hover {
-    transform: translateY(-6px);
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+@media (min-width: 768px) {
+    .features {
+        padding: 4rem 0;
+    }
+    .features .card {
+        margin-bottom: 0;
+    }
+}
+
+@media (hover: hover) {
+    .features .card:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+    }
 }
 
 .feature-icon i {
@@ -139,6 +250,7 @@ body {
 ========================= */
 .badge {
     font-weight: 500;
+    padding: 0.35em 0.65em;
 }
 
 .badge.bg-success {
@@ -150,10 +262,10 @@ body {
 }
 
 /* =========================
-   HOW IT WORKS
+   HOW IT WORKS MOBILE-FIRST
 ========================= */
 .step-number .badge {
-    font-size: 1.1rem;
+    font-size: 1rem;
     width: 48px;
     height: 48px;
     display: inline-flex;
@@ -161,9 +273,30 @@ body {
     justify-content: center;
 }
 
+@media (max-width: 768px) {
+    .step-number {
+        margin-bottom: 1rem;
+    }
+}
+
 /* =========================
-   BUTTONS (GLOBAL)
+   BUTTONS (GLOBAL) MOBILE-FRIENDLY
 ========================= */
+.btn {
+    border-radius: 8px;
+    padding: 0.625rem 1rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+/* 🔥 Área de toque maior em mobile */
+@media (max-width: 768px) {
+    .btn {
+        padding: 0.75rem 1rem;
+        min-height: 44px;
+    }
+}
+
 .btn-primary {
     background-color: var(--primary);
     border-color: var(--primary);
@@ -206,20 +339,25 @@ a.text-success {
 }
 
 /* =========================
-   FOOTER
+   FOOTER MOBILE-FIRST
 ========================= */
 footer {
     background-color: #1f2937;
     color: #e5e7eb;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
+    padding: 2rem 0;
+    text-align: center;
 }
 
 footer h5 {
     color: #ffffff;
+    font-size: 1rem;
+    margin-bottom: 1rem;
 }
 
 footer a {
     color: #e5e7eb;
+    text-decoration: none;
 }
 
 footer a:hover {
@@ -229,11 +367,240 @@ footer a:hover {
 
 footer hr {
     border-color: rgba(255, 255, 255, 0.1);
+    margin: 1.5rem 0;
+}
+
+@media (min-width: 768px) {
+    footer {
+        text-align: left;
+        font-size: 0.9rem;
+    }
 }
 
 /* =========================
-   ALERTS
+   ALERTS MOBILE-FRIENDLY
 ========================= */
 .alert {
     border-radius: 12px;
+    padding: 0.875rem 1rem;
+    font-size: 0.9rem;
+}
+
+@media (max-width: 768px) {
+    .alert {
+        padding: 0.75rem;
+        font-size: 0.85rem;
+    }
+}
+
+/* =========================
+   FORMULÁRIOS MOBILE-FRIENDLY
+========================= */
+.form-control,
+.form-select {
+    border-radius: 8px;
+    padding: 0.625rem 0.75rem;
+}
+
+/* 🔥 Evita zoom no iOS ao focar em inputs */
+@media (max-width: 768px) {
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="tel"],
+    select,
+    textarea {
+        font-size: 16px !important;
+    }
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25);
+}
+
+.form-label {
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+.form-text {
+    font-size: 0.75rem;
+    color: var(--muted);
+}
+
+/* =========================
+   CARDS MOBILE-FRIENDLY
+========================= */
+.card {
+    border-radius: 16px;
+    border: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    margin-bottom: 1rem;
+}
+
+.card-header {
+    border-radius: 16px 16px 0 0 !important;
+    padding: 0.875rem 1rem;
+}
+
+.card-body {
+    padding: 1rem;
+}
+
+@media (min-width: 768px) {
+    .card-body {
+        padding: 1.25rem;
+    }
+}
+
+/* =========================
+   TABELAS MOBILE-FRIENDLY
+========================= */
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 0;
+}
+
+.table {
+    font-size: 0.85rem;
+    margin-bottom: 0;
+}
+
+.table td,
+.table th {
+    padding: 0.625rem 0.5rem;
+    vertical-align: middle;
+}
+
+@media (max-width: 768px) {
+    .table {
+        font-size: 0.75rem;
+    }
+    
+    .table td,
+    .table th {
+        padding: 0.5rem 0.375rem;
+    }
+}
+
+/* =========================
+   MODAIS MOBILE-FRIENDLY
+========================= */
+.modal-dialog {
+    margin: 0.5rem;
+}
+
+@media (min-width: 576px) {
+    .modal-dialog {
+        margin: 1.75rem auto;
+    }
+}
+
+.modal-content {
+    border-radius: 20px;
+    border: none;
+}
+
+.modal-header {
+    padding: 1rem;
+    border-radius: 20px 20px 0 0;
+}
+
+.modal-body {
+    padding: 1rem;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.modal-footer {
+    padding: 0.75rem 1rem;
+}
+
+/* 🔥 Botões no modal em mobile */
+@media (max-width: 576px) {
+    .modal-footer {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .modal-footer .btn {
+        width: 100%;
+        margin-left: 0 !important;
+    }
+}
+
+/* =========================
+   GRID RESPONSIVO
+========================= */
+.container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+}
+
+@media (min-width: 576px) {
+    .container {
+        padding-left: 1.5rem;
+        padding-right: 1.5rem;
+    }
+}
+
+.row {
+    margin-left: -0.5rem;
+    margin-right: -0.5rem;
+}
+
+.col,
+[class*="col-"] {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+}
+
+/* =========================
+   UTILITÁRIOS RESPONSIVOS
+========================= */
+/* Stack vertical em mobile */
+@media (max-width: 768px) {
+    .flex-column-mobile {
+        flex-direction: column !important;
+    }
+    
+    .gap-mobile-2 {
+        gap: 0.5rem !important;
+    }
+    
+    .text-center-mobile {
+        text-align: center !important;
+    }
+    
+    .w-100-mobile {
+        width: 100% !important;
+    }
+}
+
+/* =========================
+   ANIMAÇÕES SUAVES (mobile otimizado)
+========================= */
+@media (prefers-reduced-motion: no-preference) {
+    .fade-in {
+        animation: fadeIn 0.3s ease-in;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+}
+
+/* Remove animações em dispositivos que preferem menos movimento */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
 }

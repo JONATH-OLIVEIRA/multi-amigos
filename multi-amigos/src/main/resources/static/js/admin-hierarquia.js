@@ -1,4 +1,4 @@
-// admin-hierarquia.js MODERNIZADO (COOKIE HttpOnly + ERROS PADRÃO)
+// admin-hierarquia.js MODERNIZADO COM SUPORTE MOBILE
 class AdminHierarquia {
     constructor() {
         this.container = null;
@@ -6,12 +6,32 @@ class AdminHierarquia {
         this.usuarioSelecionado = null;
         this.arvoreAtual = null;
         this.svg = null;
-        this.width = 1400;
-        this.height = 800;
+        
+        // 🔥 DIMENSÕES RESPONSIVAS
+        this.updateDimensions();
+        
         this.margin = { top: 50, right: 120, bottom: 50, left: 120 };
-        this.nodeRadius = 45;
+        this.nodeRadius = this.isMobile() ? 35 : 45;
         this.zoom = null;
         this.tooltip = null;
+        this.touchStart = null; // Para detectar toque vs clique
+    }
+
+    // 🔥 DETECTA SE É MOBILE
+    isMobile() {
+        return window.innerWidth <= 768;
+    }
+
+    // 🔥 ATUALIZA DIMENSÕES BASEADO NA TELA
+    updateDimensions() {
+        const container = document.getElementById('arvoreContainer');
+        const width = container ? container.clientWidth : window.innerWidth;
+        
+        this.width = Math.min(width - 40, 1400); // Máximo 1400, mas respeita largura da tela
+        this.height = this.isMobile() ? 500 : 800;
+        
+        // Ajusta raio do nó para mobile
+        this.nodeRadius = this.isMobile() ? 30 : 45;
     }
 
     // ============================================
@@ -29,10 +49,8 @@ class AdminHierarquia {
         const opts = { ...options };
         opts.headers = this.authHeaders(opts.headers || {});
 
-        // ✅ garante cookie do mesmo domínio
         if (!opts.credentials) opts.credentials = 'same-origin';
 
-        // Auto JSON
         if (opts.body && typeof opts.body === 'object' && !(opts.body instanceof FormData)) {
             if (!opts.headers['Content-Type']) opts.headers['Content-Type'] = 'application/json';
             opts.body = JSON.stringify(opts.body);
@@ -40,7 +58,6 @@ class AdminHierarquia {
 
         const res = await fetch(url, opts);
 
-        // 401 -> login
         if (res.status === 401) {
             window.location.href = '/auth/login';
             throw new Error('Sessão expirada. Faça login novamente.');
@@ -75,23 +92,41 @@ class AdminHierarquia {
             return;
         }
 
+        // 🔥 ESCUTA MUDANÇA DE ORIENTAÇÃO
+        window.addEventListener('resize', () => this.handleResize());
+        
         this.render();
         this.carregarUsuarios();
+    }
+
+    // 🔥 LIDA COM REDIMENSIONAMENTO
+    handleResize() {
+        if (!this.arvoreAtual) return;
+        
+        // Atualiza dimensões
+        this.updateDimensions();
+        
+        // Re-renderiza a árvore com novas dimensões
+        setTimeout(() => {
+            this.inicializarSVG();
+            this.renderizarArvore(this.arvoreAtual);
+        }, 300);
     }
 
     render() {
         this.container.innerHTML = '';
 
+        // 🔥 VERSÃO MOBILE-FIRST DO HTML (mantendo o mesmo estilo)
         const html = `
             <div class="hierarquia-container">
                 <div class="hierarquia-card">
                     <div class="hierarquia-header">
-                        <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap ${this.isMobile() ? 'flex-column gap-2' : ''}">
                             <div>
                                 <h4 class="mb-1">
-                                    <i class="bi bi-diagram-3 me-2"></i>Árvore Genealógica da Rede
+                                    <i class="bi bi-diagram-3 me-2"></i>Árvore Genealógica
                                 </h4>
-                                <p class="text-light mb-0">Visualize a hierarquia completa da rede de forma interativa</p>
+                                <p class="text-light mb-0">Visualize a hierarquia completa da rede</p>
                             </div>
                             <button id="btnAtualizarArvore" class="btn-moderno btn-moderno-primary">
                                 <i class="bi bi-arrow-clockwise me-2"></i>Atualizar
@@ -105,12 +140,12 @@ class AdminHierarquia {
                                 <label class="form-label-moderno">
                                     <i class="bi bi-person-fill me-2"></i>Visualizar rede de:
                                 </label>
-                                <div class="input-group">
+                                <div class="input-group ${this.isMobile() ? 'flex-column gap-2' : ''}">
                                     <select id="selectUsuarioRaiz" class="form-select-moderno">
                                         <option value="">Carregando usuários...</option>
                                     </select>
-                                    <button id="btnCarregarArvore" class="btn-moderno btn-moderno-primary ms-2" disabled>
-                                        <i class="bi bi-eye me-2"></i>Carregar Árvore
+                                    <button id="btnCarregarArvore" class="btn-moderno btn-moderno-primary ${this.isMobile() ? 'w-100' : ''}" disabled>
+                                        <i class="bi bi-eye me-2"></i>Carregar
                                     </button>
                                 </div>
                             </div>
@@ -120,8 +155,8 @@ class AdminHierarquia {
                                     <i class="bi bi-arrow-down-up me-2"></i>Profundidade:
                                 </label>
                                 <select id="selectProfundidade" class="form-select-moderno">
-                                    <option value="2">2 níveis (até netos)</option>
-                                    <option value="3" selected>3 níveis (até bisnetos)</option>
+                                    <option value="2">2 níveis</option>
+                                    <option value="3" selected>3 níveis</option>
                                     <option value="4">4 níveis</option>
                                     <option value="5">5 níveis</option>
                                     <option value="10">Toda hierarquia</option>
@@ -133,8 +168,8 @@ class AdminHierarquia {
                                     <i class="bi bi-layout-split me-2"></i>Layout:
                                 </label>
                                 <select id="selectLayout" class="form-select-moderno">
-                                    <option value="horizontal">Horizontal</option>
                                     <option value="vertical" selected>Vertical</option>
+                                    <option value="horizontal">Horizontal</option>
                                     <option value="radial">Radial</option>
                                 </select>
                             </div>
@@ -154,41 +189,41 @@ class AdminHierarquia {
 
                     <div class="estatisticas-modernas" id="estatisticasArvore">
                         <div class="estatistica-card-moderno">
-                            <h6>Total de Membros</h6>
+                            <h6>Total</h6>
                             <h2 id="totalMembros">0</h2>
-                            <p class="text-muted mb-0">Na rede selecionada</p>
+                            <p class="text-muted mb-0">Membros</p>
                         </div>
 
                         <div class="estatistica-card-moderno">
-                            <h6>Níveis da Rede</h6>
+                            <h6>Níveis</h6>
                             <h2 id="totalNiveis">0</h2>
-                            <p class="text-muted mb-0">Profundidade máxima</p>
+                            <p class="text-muted mb-0">Profundidade</p>
                         </div>
 
                         <div class="estatistica-card-moderno">
-                            <h6>Usuários Ativos</h6>
+                            <h6>Ativos</h6>
                             <h2 id="usuariosAtivos">0</h2>
-                            <p class="text-muted mb-0">Com acesso ativo</p>
+                            <p class="text-muted mb-0">Ativos</p>
                         </div>
 
                         <div class="estatistica-card-moderno">
-                            <h6>Administradores</h6>
+                            <h6>Admins</h6>
                             <h2 id="totalAdmins">0</h2>
-                            <p class="text-muted mb-0">Com privilégios admin</p>
+                            <p class="text-muted mb-0">Admins</p>
                         </div>
                     </div>
 
                     <div class="arvore-area-moderna">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
                             <h5 class="mb-0">
                                 <i class="bi bi-graph-up me-2"></i>Visualização da Rede
                             </h5>
                             <span class="badge bg-primary" id="arvoreStatus">
-                                Selecione um usuário para iniciar
+                                Selecione um usuário
                             </span>
                         </div>
 
-                        <div class="arvore-svg-container" id="arvoreContainer">
+                        <div class="arvore-svg-container" id="arvoreContainer" style="min-height: ${this.isMobile() ? '500px' : '700px'}; overflow: auto;">
                             <svg id="arvoreSvg" width="100%" height="100%"></svg>
 
                             <div class="zoom-controls-modernos">
@@ -204,26 +239,26 @@ class AdminHierarquia {
                             </div>
                         </div>
 
-                        <div class="legenda-moderna mt-4">
+                        <div class="legenda-moderna mt-4 flex-wrap">
                             <div class="legenda-item-moderno">
                                 <div class="legenda-icon admin">
                                     <i class="bi bi-shield-fill-check"></i>
                                 </div>
-                                <span class="legenda-text">Administrador</span>
+                                <span class="legenda-text">Admin</span>
                             </div>
 
                             <div class="legenda-item-moderno">
                                 <div class="legenda-icon usuario">
                                     <i class="bi bi-person-fill"></i>
                                 </div>
-                                <span class="legenda-text">Usuário Normal</span>
+                                <span class="legenda-text">Usuário</span>
                             </div>
 
                             <div class="legenda-item-moderno">
                                 <div class="legenda-icon inativo">
                                     <i class="bi bi-x-circle-fill"></i>
                                 </div>
-                                <span class="legenda-text">Usuário Inativo</span>
+                                <span class="legenda-text">Inativo</span>
                             </div>
 
                             <div class="legenda-item-moderno">
@@ -238,11 +273,11 @@ class AdminHierarquia {
             </div>
 
             <div class="modal fade" id="modalDetalhesUsuario" tabindex="-1">
-                <div class="modal-dialog modal-lg modal-dialog-centered">
+                <div class="modal-dialog modal-lg modal-dialog-centered ${this.isMobile() ? 'm-2' : ''}">
                     <div class="modal-content border-0 shadow-lg">
                         <div class="modal-header" style="background: linear-gradient(90deg, #4f46e5 0%, #7c3aed 100%);">
                             <h5 class="modal-title text-white">
-                                <i class="bi bi-person-badge me-2"></i>Detalhes do Usuário
+                                <i class="bi bi-person-badge me-2"></i>Detalhes
                             </h5>
                             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                         </div>
@@ -291,9 +326,17 @@ class AdminHierarquia {
             if (this.arvoreAtual) this.renderizarArvore(this.arvoreAtual);
         });
 
-        document.getElementById('selectUsuarioRaiz').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.carregarArvore();
-        });
+        // 🔥 SUPORTE A TOQUE PARA DISPOSITIVOS MÓVEIS
+        const container = document.getElementById('arvoreContainer');
+        if (container) {
+            container.addEventListener('touchstart', (e) => {
+                this.touchStart = {
+                    x: e.touches[0].clientX,
+                    y: e.touches[0].clientY,
+                    time: Date.now()
+                };
+            }, { passive: true });
+        }
     }
 
     inicializarSVG() {
@@ -354,14 +397,14 @@ class AdminHierarquia {
                 <optgroup label="Administradores">
                     ${this.usuarios.filter(u => u.perfil === 'ADMIN').map(u => `
                         <option value="${u.id}" data-perfil="${u.perfil}">
-                            👑 ${u.nome} (${u.email})
+                            👑 ${u.nome}
                         </option>
                     `).join('')}
                 </optgroup>
                 <optgroup label="Usuários">
                     ${this.usuarios.filter(u => u.perfil !== 'ADMIN').map(u => `
                         <option value="${u.id}" data-perfil="${u.perfil}">
-                            👤 ${u.nome} (${u.email})
+                            👤 ${u.nome}
                         </option>
                     `).join('')}
                 </optgroup>
@@ -522,27 +565,27 @@ class AdminHierarquia {
             .attr('text-anchor', 'middle')
             .attr('dy', '0.35em')
             .attr('fill', 'white')
-            .attr('font-size', '24px')
+            .attr('font-size', this.isMobile() ? '20px' : '24px')
             .attr('font-weight', 'bold')
             .text(d => this.getIconeNode(d.data));
 
         nodes.append('text')
             .attr('text-anchor', 'middle')
-            .attr('dy', this.nodeRadius + 20)
+            .attr('dy', this.nodeRadius + (this.isMobile() ? 15 : 20))
             .attr('class', 'node-text')
-            .text(d => this.truncarTexto((d.data.nome || '').split(' ')[0] || '', 10));
+            .text(d => this.truncarTexto((d.data.nome || '').split(' ')[0] || '', this.isMobile() ? 8 : 10));
 
         nodes.append('text')
             .attr('text-anchor', 'middle')
-            .attr('dy', this.nodeRadius + 40)
+            .attr('dy', this.nodeRadius + (this.isMobile() ? 30 : 40))
             .attr('class', 'node-subtext')
             .text(d => `${d.data.perfil === 'ADMIN' ? '👑 ' : ''}Nível ${d.data.nivel} • ${d.data.ativo ? '✅' : '⏸️'}`);
 
         nodes.filter(d => d.children && d.children.length > 0)
             .append('circle')
-            .attr('cx', this.nodeRadius - 12)
-            .attr('cy', -this.nodeRadius + 12)
-            .attr('r', 10)
+            .attr('cx', this.nodeRadius - (this.isMobile() ? 10 : 12))
+            .attr('cy', -this.nodeRadius + (this.isMobile() ? 10 : 12))
+            .attr('r', this.isMobile() ? 8 : 10)
             .attr('fill', '#10b981')
             .attr('stroke', 'white')
             .attr('stroke-width', 2)
@@ -550,11 +593,11 @@ class AdminHierarquia {
 
         nodes.filter(d => d.children && d.children.length > 0)
             .append('text')
-            .attr('x', this.nodeRadius - 12)
-            .attr('y', -this.nodeRadius + 15)
+            .attr('x', this.nodeRadius - (this.isMobile() ? 10 : 12))
+            .attr('y', -this.nodeRadius + (this.isMobile() ? 13 : 15))
             .attr('text-anchor', 'middle')
             .attr('fill', 'white')
-            .attr('font-size', '10px')
+            .attr('font-size', this.isMobile() ? '8px' : '10px')
             .attr('font-weight', 'bold')
             .text(d => d.children.length);
 
@@ -605,7 +648,7 @@ class AdminHierarquia {
     }
 
     mostrarTooltipModerno(event, usuario) {
-        if (!this.tooltip) return;
+        if (!this.tooltip || this.isMobile()) return; // Desativa tooltip em mobile
 
         const containerRect = document.getElementById('arvoreContainer').getBoundingClientRect();
         const x = event.clientX - containerRect.left;
@@ -630,7 +673,6 @@ class AdminHierarquia {
             <div class="mt-3 text-center"><small class="text-muted">Clique para ver detalhes</small></div>
         `;
 
-        // mede depois do HTML
         this.tooltip.style.display = 'block';
         const tooltipRect = this.tooltip.getBoundingClientRect();
 
@@ -671,12 +713,11 @@ class AdminHierarquia {
                                         onclick="hierarquia.verArvoreUsuario(${usuarioDetalhado.id})">
                                     <i class="bi bi-diagram-3 me-2"></i>Ver Árvore
                                 </button>
-                                <button class="btn-moderno"
-                                        style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white;"
+                                <button class="btn-moderno btn-moderno-warning"
                                         onclick="hierarquia.editarUsuario(${usuarioDetalhado.id})">
                                     <i class="bi bi-pencil me-2"></i>Editar
                                 </button>
-                                <button class="btn-moderno ${usuarioDetalhado.ativo ? 'btn-danger' : 'btn-success'}"
+                                <button class="btn-moderno ${usuarioDetalhado.ativo ? 'btn-moderno-danger' : 'btn-moderno-success'}"
                                         onclick="hierarquia.${usuarioDetalhado.ativo ? 'desativar' : 'ativar'}Usuario(${usuarioDetalhado.id})">
                                     <i class="bi bi-${usuarioDetalhado.ativo ? 'x-circle' : 'check-circle'} me-2"></i>
                                     ${usuarioDetalhado.ativo ? 'Desativar' : 'Ativar'}
@@ -790,6 +831,7 @@ class AdminHierarquia {
         }
     }
 
+    // 🔥 MÉTODO PARA CENTRALIZAR COM ANIMAÇÃO SUAVE EM MOBILE
     centralizarArvore() {
         if (!this.svg || !this.svg.svg) return;
 
@@ -797,7 +839,7 @@ class AdminHierarquia {
         if (!gElement || !gElement.getBBox) return;
 
         const bbox = gElement.getBBox();
-        const scale = Math.min(this.width / bbox.width, this.height / bbox.height, 0.9);
+        const scale = Math.min(this.width / bbox.width, this.height / bbox.height, 0.85);
 
         const translate = [
             this.width / 2 - (bbox.x + bbox.width / 2) * scale,
@@ -805,12 +847,19 @@ class AdminHierarquia {
         ];
 
         this.svg.svg.transition()
-            .duration(1000)
+            .duration(this.isMobile() ? 500 : 1000)
             .call(this.zoom.transform, d3.zoomIdentity.translate(translate[0], translate[1]).scale(scale));
     }
 
-    zoomIn() { if (this.svg?.svg && this.zoom) this.svg.svg.transition().call(this.zoom.scaleBy, 1.5); }
-    zoomOut() { if (this.svg?.svg && this.zoom) this.svg.svg.transition().call(this.zoom.scaleBy, 0.67); }
+    zoomIn() { 
+        if (this.svg?.svg && this.zoom) 
+            this.svg.svg.transition().call(this.zoom.scaleBy, 1.5); 
+    }
+    
+    zoomOut() { 
+        if (this.svg?.svg && this.zoom) 
+            this.svg.svg.transition().call(this.zoom.scaleBy, 0.67); 
+    }
 
     resetZoom() {
         if (!this.svg?.svg || !this.zoom) return;
@@ -827,7 +876,7 @@ class AdminHierarquia {
             btn.disabled = true;
             status.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Carregando árvore...';
         } else {
-            btn.innerHTML = '<i class="bi bi-eye me-2"></i>Carregar Árvore';
+            btn.innerHTML = '<i class="bi bi-eye me-2"></i>Carregar';
             btn.disabled = !document.getElementById('selectUsuarioRaiz').value;
         }
     }
