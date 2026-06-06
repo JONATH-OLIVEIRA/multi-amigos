@@ -66,7 +66,9 @@ public class SecurityConfig {
 
                     // Recursos estáticos não devem redirecionar
                     if (uri.startsWith("/css/") || uri.startsWith("/js/") || uri.startsWith("/images/")
-                        || uri.startsWith("/webjars/") || uri.equals("/favicon.ico")) {
+                        || uri.startsWith("/icons/") || uri.startsWith("/webjars/")
+                        || uri.equals("/favicon.ico") || uri.equals("/manifest.json")
+                        || uri.equals("/service-worker.js")) {
                         response.setStatus(HttpServletResponse.SC_NOT_FOUND);
                         return;
                     }
@@ -98,7 +100,8 @@ public class SecurityConfig {
                     "/auth/**",
 
                     // Estáticos
-                    "/css/**", "/js/**", "/images/**", "/favicon.ico", "/webjars/**",
+                    "/css/**", "/js/**", "/images/**", "/icons/**", "/favicon.ico",
+                    "/manifest.json", "/service-worker.js", "/webjars/**",
 
                     // Cadastro por link (página)
                     "/cadastro", "/cadastro/**"
